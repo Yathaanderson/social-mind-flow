@@ -26,6 +26,7 @@ const CalendarPage: React.FC = () => {
     twitter: true,
     tiktok: true,
   });
+  const [isRescheduling, setIsRescheduling] = useState(false);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [editPost, setEditPost] = useState<Post | null>(null);
@@ -92,6 +93,39 @@ const CalendarPage: React.FC = () => {
     // Navigate to create post with pre-filled date
     const formattedDate = format(date, "yyyy-MM-dd'T'HH:mm");
     navigate(`/create?date=${formattedDate}`);
+  };
+
+  const handlePostDrop = async (postId: string, newDate: Date) => {
+    if (!user || isRescheduling) return;
+
+    setIsRescheduling(true);
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({
+          scheduled_for: newDate.toISOString(),
+          status: 'agendado',
+        })
+        .eq('id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Post reagendado',
+        description: `Post movido para ${format(newDate, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`,
+      });
+
+      fetchPosts();
+    } catch (error) {
+      toast({
+        title: 'Erro ao reagendar',
+        description: 'Não foi possível reagendar o post. Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsRescheduling(false);
+    }
   };
 
   const handleEdit = (post: Post) => {
@@ -171,6 +205,7 @@ const CalendarPage: React.FC = () => {
           filters={filters}
           onPostClick={handlePostClick}
           onDateClick={handleDateClick}
+          onPostDrop={handlePostDrop}
         />
       )}
 
