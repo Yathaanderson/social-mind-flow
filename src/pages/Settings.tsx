@@ -1,5 +1,9 @@
 import React from 'react';
 import { Settings as SettingsIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SocialAccountsTab } from '@/components/settings/SocialAccountsTab';
+import { PreferencesTab } from '@/components/settings/PreferencesTab';
+import { AccountTab } from '@/components/settings/AccountTab';
 
 const Settings: React.FC = () => {
   return (
@@ -8,10 +12,27 @@ const Settings: React.FC = () => {
         <SettingsIcon className="w-6 h-6 text-primary" />
         Configurações
       </h1>
-      <div className="glass-card rounded-xl p-12 text-center">
-        <SettingsIcon className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-        <h2 className="text-xl font-semibold mb-2">Configurações</h2>
-        <p className="text-muted-foreground">Gerencie suas redes sociais conectadas, preferências e conta.</p>
+
+      <div className="glass-card rounded-xl p-6">
+        <Tabs defaultValue="social" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="social">Redes Sociais</TabsTrigger>
+            <TabsTrigger value="preferences">Preferências</TabsTrigger>
+            <TabsTrigger value="account">Conta</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="social">
+            <SocialAccountsTab />
+          </TabsContent>
+
+          <TabsContent value="preferences">
+            <PreferencesTab />
+          </TabsContent>
+
+          <TabsContent value="account">
+            <AccountTab />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -13,9 +13,15 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+
+interface Profile {
+  full_name: string | null;
+  avatar_url: string | null;
+}
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -28,13 +34,43 @@ const navItems = [
 const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('user_id', user?.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
 
-  const userInitials = user?.email?.slice(0, 2).toUpperCase() || 'US';
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Usuário';
+  const userInitials = profile?.full_name
+    ? profile.full_name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email?.slice(0, 2).toUpperCase() || 'US';
 
   return (
     <div className="flex flex-col h-full">
@@ -55,11 +91,11 @@ const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) =
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 ring-2 ring-primary/20">
-            <AvatarImage src={undefined} />
+            <AvatarImage src={profile?.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/20 text-primary">{userInitials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.email?.split('@')[0]}</p>
+            <p className="text-sm font-medium truncate">{displayName}</p>
             <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
           </div>
         </div>
