@@ -1,201 +1,104 @@
 
+# Plano: Drag-and-Drop no Calendário
 
-# Plano de Implementação: Conexão Completa do Sistema com o Banco de Dados
+## Objetivo
+Adicionar funcionalidade de arrastar e soltar posts entre datas no calendário para reagendar de forma visual e intuitiva.
 
-## Resumo
+## Abordagem Tecnica
 
-O sistema já possui a estrutura básica funcionando com Lovable Cloud (banco de dados), mas três páginas principais estão apenas como placeholders. Este plano vai implementar a conexão completa dessas páginas com o banco de dados, tornando o Social Media Manager AI totalmente funcional.
+Utilizaremos a **HTML5 Drag and Drop API nativa** do navegador, que:
+- Nao requer bibliotecas adicionais
+- E leve e performatica
+- Funciona bem com React
+- Suporta feedback visual nativo
 
-## Estado Atual
+## Como vai funcionar
 
-**Funcionando:**
-- Dashboard com dados do banco de dados
-- Criar Post (salvando no banco)
-- Autenticação (login/signup)
-- Edge function para gerar ideias com IA
-- Perfil do usuário criado automaticamente ao registrar
+1. Usuario clica e segura um post no calendario
+2. Post fica semi-transparente indicando que esta sendo arrastado
+3. Ao passar sobre outras datas, a celula do dia destaca visualmente
+4. Ao soltar em outra data, o post e reagendado automaticamente
+5. Toast de confirmacao aparece com a nova data
 
-**Faltando implementar:**
-- Calendário - apenas placeholder
-- Biblioteca - apenas placeholder  
-- Configurações - apenas placeholder
+## Arquivos a Modificar
 
----
+### 1. CalendarPostCard.tsx
+**Mudancas:**
+- Adicionar atributo `draggable={true}`
+- Implementar `onDragStart` para iniciar o arrasto e salvar dados do post
+- Adicionar estilos visuais durante o arrasto (opacity, cursor)
 
-## Fase 1: Página Calendário
+### 2. CalendarGrid.tsx
+**Mudancas:**
+- Adicionar prop `onPostDrop` para receber callback de reagendamento
+- Implementar `onDragOver` nas celulas de dia para permitir drop
+- Implementar `onDragEnter/onDragLeave` para feedback visual ao passar sobre datas
+- Implementar `onDrop` para capturar o post e chamar callback com nova data
+- Estado local para controlar qual celula esta destacada
 
-### Objetivo
-Implementar um calendário visual interativo que mostra todos os posts agendados e publicados.
+### 3. Calendar.tsx (pagina principal)
+**Mudancas:**
+- Adicionar funcao `handlePostDrop(postId, newDate)` que:
+  - Atualiza `scheduled_for` no banco de dados
+  - Muda status para "agendado" se necessario
+  - Mostra toast de confirmacao
+  - Recarrega posts do calendario
 
-### Funcionalidades
-1. Visualização mensal dos posts em formato de calendário
-2. Cores diferentes para cada rede social (Instagram rosa, LinkedIn azul, Twitter azul claro, TikTok preto)
-3. Filtros por rede social
-4. Clique em post abre modal de detalhes
-5. Clique em data vazia permite criar post rápido
-6. Navegação entre meses
+## Detalhes de Implementacao
 
-### Componentes a criar
-- `CalendarGrid.tsx` - Grid do calendário com dias e posts
-- `CalendarFilters.tsx` - Filtros por rede social
-- `CalendarPostCard.tsx` - Card do post no calendário
-- `PostDetailModal.tsx` - Modal com detalhes do post
-
-### Integração com banco
+### Dados do Drag
 ```text
-SELECT * FROM posts 
-WHERE user_id = [current_user_id]
-  AND (scheduled_for IS NOT NULL OR published_at IS NOT NULL)
-ORDER BY COALESCE(scheduled_for, published_at)
+Durante o drag, armazenamos no dataTransfer:
+- post.id (para identificar qual post)
+- Data original (para feedback)
 ```
 
----
-
-## Fase 2: Página Biblioteca
-
-### Objetivo
-Implementar uma biblioteca completa de posts com busca, filtros e ações.
-
-### Funcionalidades
-1. Tabela paginada de todos os posts
-2. Busca por palavra-chave em tempo real
-3. Filtros por status (Rascunho, Agendado, Publicado)
-4. Filtros por rede social
-5. Ordenação por coluna
-6. Ações: Editar, Duplicar, Ver Analytics, Deletar
-7. Badges coloridas para status
-
-### Componentes a criar
-- `LibraryFilters.tsx` - Barra de filtros e busca
-- `LibraryTable.tsx` - Tabela com paginação
-- `StatusBadge.tsx` - Badge colorida de status
-
-### Integração com banco
+### Estados Visuais
 ```text
-SELECT * FROM posts 
-WHERE user_id = [current_user_id]
-  AND content ILIKE '%[search]%'
-  AND status = [status_filter]
-  AND [platform] = ANY(platforms)
-ORDER BY created_at DESC
-LIMIT 10 OFFSET [page * 10]
+Post sendo arrastado:
+- opacity: 0.5
+- cursor: grabbing
+- scale: 0.95
+
+Celula de destino (hover):
+- background: primary/20
+- border: dashed primary
+- scale: 1.02
 ```
 
----
+### Validacoes
+- Apenas posts com status "rascunho" ou "agendado" podem ser movidos
+- Posts "publicados" nao podem ser arrastados (ja foram publicados)
+- Feedback visual diferente para posts nao arrastaveis
 
-## Fase 3: Página Configurações
-
-### Objetivo
-Implementar painel de configurações com 3 abas funcionais.
-
-### Aba 1: Redes Sociais
-- Cards para cada rede (Instagram, LinkedIn, Twitter, TikTok)
-- Status de conexão (visual, não real)
-- Botão conectar/desconectar
-- Username se conectado
-
-### Aba 2: Preferências
-- Toggle: Notificar quando post for publicado
-- Toggle: Notificar comentários
-- Dropdown: Melhor horário para postar
-- Input: Email para notificações
-- Botão salvar
-
-### Aba 3: Conta
-- Informações do usuário
-- Editar perfil (nome, avatar)
-- Botão logout
-
-### Componentes a criar
-- `SocialAccountsTab.tsx` - Gerenciar redes sociais
-- `PreferencesTab.tsx` - Preferências de notificação
-- `AccountTab.tsx` - Dados da conta
-- `SocialAccountCard.tsx` - Card individual de rede
-
-### Integração com banco
+### Query de Atualizacao
 ```text
--- Carregar configurações
-SELECT * FROM user_settings WHERE user_id = [current_user_id]
-SELECT * FROM social_accounts WHERE user_id = [current_user_id]
-SELECT * FROM profiles WHERE user_id = [current_user_id]
-
--- Atualizar preferências
-UPDATE user_settings SET ... WHERE user_id = [current_user_id]
-UPDATE social_accounts SET ... WHERE id = [account_id]
-UPDATE profiles SET ... WHERE user_id = [current_user_id]
+UPDATE posts
+SET scheduled_for = [nova_data],
+    status = 'agendado'
+WHERE id = [post_id]
+  AND user_id = [current_user_id]
 ```
 
----
+## Experiencia do Usuario
 
-## Fase 4: Melhorias na Sidebar
+1. **Cursor**: Muda para "grab" ao passar sobre posts arrastaveis
+2. **Arrastar**: Post fica transparente, celulas destino destacam
+3. **Soltar**: Animacao suave, toast confirma reagendamento
+4. **Erro**: Toast de erro se falhar, post volta a posicao original
+5. **Posts publicados**: Cursor "not-allowed", nao arrastavel
 
-### Objetivo
-Mostrar dados reais do usuário na sidebar.
+## Arquivos Envolvidos
 
-### Implementação
-- Buscar perfil do usuário do banco
-- Mostrar nome completo e avatar
-- Usar dados do profile ao invés de email
+| Arquivo | Acao |
+|---------|------|
+| `src/components/calendar/CalendarPostCard.tsx` | Modificar |
+| `src/components/calendar/CalendarGrid.tsx` | Modificar |
+| `src/pages/Calendar.tsx` | Modificar |
 
----
+## Ordem de Implementacao
 
-## Arquivos a Modificar/Criar
-
-### Novos Arquivos (12)
-1. `src/pages/Calendar.tsx` - Reescrever completamente
-2. `src/pages/Library.tsx` - Reescrever completamente
-3. `src/pages/Settings.tsx` - Reescrever completamente
-4. `src/components/calendar/CalendarGrid.tsx`
-5. `src/components/calendar/CalendarFilters.tsx`
-6. `src/components/calendar/CalendarPostCard.tsx`
-7. `src/components/library/LibraryFilters.tsx`
-8. `src/components/library/LibraryTable.tsx`
-9. `src/components/settings/SocialAccountsTab.tsx`
-10. `src/components/settings/PreferencesTab.tsx`
-11. `src/components/settings/AccountTab.tsx`
-12. `src/components/settings/SocialAccountCard.tsx`
-
-### Arquivos a Modificar (1)
-1. `src/components/layout/Sidebar.tsx` - Buscar perfil real
-
----
-
-## Detalhes Tecnicos
-
-### Queries Supabase Utilizadas
-
-**Calendário:**
-- Buscar posts do mês atual
-- Atualizar data de agendamento (drag-and-drop futuro)
-
-**Biblioteca:**
-- Busca com ILIKE para filtro de texto
-- Filtros combinados com AND
-- Paginação com LIMIT/OFFSET
-- Contagem total para navegação
-
-**Configurações:**
-- Leitura de 3 tabelas: profiles, user_settings, social_accounts
-- Updates individuais por tabela
-
-### Tratamento de Erros
-- Toast de erro para falhas de conexão
-- Loading states durante operações
-- Estados vazios quando não há dados
-
-### Estados de Loading
-- Skeleton loaders para tabelas
-- Spinners para ações
-- Estados de carregamento inicial
-
----
-
-## Ordem de Implementação
-
-1. **Biblioteca** - Tabela de posts com filtros (mais utilizada)
-2. **Configurações** - Salvar preferências do usuário
-3. **Calendário** - Visualização dos posts
-4. **Sidebar** - Mostrar dados reais do perfil
-
-Tempo estimado: Implementação em sequência para garantir funcionamento correto.
-
+1. **CalendarPostCard**: Tornar arrastavel com draggable e onDragStart
+2. **CalendarGrid**: Adicionar drop zones nas celulas de dias
+3. **Calendar.tsx**: Implementar logica de atualizacao no banco
+4. **Testes**: Verificar arrastar entre meses e feedback visual
