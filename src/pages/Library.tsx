@@ -38,7 +38,10 @@ const Library: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (search) {
-        query = query.ilike('content', `%${search}%`);
+        const sanitizedSearch = search.trim().slice(0, 100);
+        if (sanitizedSearch.length >= 2) {
+          query = query.ilike('content', `%${sanitizedSearch}%`);
+        }
       }
 
       if (statusFilter !== 'all') {
