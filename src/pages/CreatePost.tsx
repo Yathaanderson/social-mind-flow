@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Save, Calendar, Rocket, Upload, X } from 'lucide-react';
+import { Save, Calendar, Rocket } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Platform } from '@/types';
@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { PlatformSelector } from '@/components/post/PlatformSelector';
 import { PostPreview } from '@/components/post/PostPreview';
 import { AIGenerator } from '@/components/post/AIGenerator';
+import { ImageUpload } from '@/components/post/ImageUpload';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -57,13 +58,7 @@ const CreatePost: React.FC = () => {
               <p className="text-xs text-muted-foreground text-right">{content.length} / 2200</p>
             </div>
             <PlatformSelector selected={platforms} onChange={setPlatforms} />
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Imagem (URL)</label>
-              <div className="flex gap-2">
-                <Input value={imageUrl || ''} onChange={(e) => setImageUrl(e.target.value || null)} placeholder="https://exemplo.com/imagem.jpg" className="bg-muted/50" />
-                {imageUrl && <Button variant="ghost" size="icon" onClick={() => setImageUrl(null)}><X className="h-4 w-4" /></Button>}
-              </div>
-            </div>
+            <ImageUpload imageUrl={imageUrl} onImageChange={setImageUrl} />
           </div>
           <div className="glass-card rounded-xl p-6">
             <AIGenerator onSelectIdea={(idea) => setContent(idea)} />

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { PlatformSelector } from '@/components/post/PlatformSelector';
+import { ImageUpload } from '@/components/post/ImageUpload';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
 }) => {
   const [content, setContent] = useState('');
   const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<PostStatus>('rascunho');
   const [scheduledFor, setScheduledFor] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +43,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
     if (post) {
       setContent(post.content);
       setPlatforms(post.platforms);
+      setImageUrl(post.image_url);
       setStatus(post.status);
       setScheduledFor(post.scheduled_for ? format(new Date(post.scheduled_for), "yyyy-MM-dd'T'HH:mm") : '');
     }
@@ -72,6 +75,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
       const updateData: Partial<Post> = {
         content,
         platforms,
+        image_url: imageUrl,
         status,
         scheduled_for: status === 'agendado' && scheduledFor ? new Date(scheduledFor).toISOString() : null,
         published_at: status === 'publicado' ? new Date().toISOString() : post.published_at
@@ -127,6 +131,8 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
           </div>
 
           <PlatformSelector selected={platforms} onChange={setPlatforms} />
+
+          <ImageUpload imageUrl={imageUrl} onImageChange={setImageUrl} />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
