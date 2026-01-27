@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,29 @@ serve(async (req) => {
   }
 
   try {
+    // Authentication check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Não autorizado' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { prompt, style } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -25,6 +49,9 @@ serve(async (req) => {
       });
     }
 
+    // Input validation - limit prompt length
+    const sanitizedPrompt = prompt.trim().slice(0, 500);
+
     const styleDescriptions: Record<string, string> = {
       minimalist: 'estilo minimalista, clean, moderno, com cores neutras e design simples',
       colorful: 'estilo colorido, vibrante, chamativo, com cores vivas e contrastantes',
@@ -36,9 +63,9 @@ serve(async (req) => {
       ? `, ${styleDescriptions[style]}` 
       : '';
 
-    const fullPrompt = `Crie uma imagem profissional para redes sociais: ${prompt}${stylePrompt}. A imagem deve ser de alta qualidade, visualmente atraente e adequada para postagens em redes sociais.`;
+    const fullPrompt = `Crie uma imagem profissional para redes sociais: ${sanitizedPrompt}${stylePrompt}. A imagem deve ser de alta qualidade, visualmente atraente e adequada para postagens em redes sociais.`;
 
-    console.log('Generating image with prompt:', fullPrompt);
+    console.log('Generating image for user:', user.id);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
