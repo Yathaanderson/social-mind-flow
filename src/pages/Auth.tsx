@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
-import { Loader2, Smartphone } from 'lucide-react';
+import { Loader2, Smartphone, Chrome } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,11 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
 const Auth: React.FC = () => {
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { toast } = useToast();
 
   if (loading) {
@@ -54,6 +55,16 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      toast({ title: 'Erro no login com Google', description: 'Tente novamente.', variant: 'destructive' });
+      setIsGoogleLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="w-full max-w-md">
@@ -86,6 +97,30 @@ const Auth: React.FC = () => {
                   {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Entrar
                 </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-muted" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">ou continue com</span>
+                  </div>
+                </div>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                >
+                  {isGoogleLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Chrome className="w-4 h-4 mr-2" />
+                  )}
+                  Google
+                </Button>
               </form>
             </TabsContent>
 
@@ -106,6 +141,30 @@ const Auth: React.FC = () => {
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Criar Conta
+                </Button>
+
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t border-muted" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">ou continue com</span>
+                  </div>
+                </div>
+
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                >
+                  {isGoogleLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Chrome className="w-4 h-4 mr-2" />
+                  )}
+                  Google
                 </Button>
               </form>
             </TabsContent>
