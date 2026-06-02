@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -9,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, LogOut, User } from 'lucide-react';
+import { getProfile, upsertProfile } from '@/integrations/firebase/firestore';
 
 interface Profile {
   full_name: string;
@@ -35,14 +35,7 @@ export const AccountTab: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
+      const data = await getProfile(user?.uid || '');
       if (data) {
         setProfile({
           full_name: data.full_name ?? '',
@@ -64,15 +57,11 @@ export const AccountTab: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          full_name: profile.full_name,
-          avatar_url: profile.avatar_url,
-        })
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
+      await upsertProfile(user?.uid || '', {
+        full_name: profile.full_name,
+        avatar_url: profile.avatar_url || undefined,
+        email: profile.email || undefined,
+      });
 
       toast({
         title: 'Perfil atualizado',

@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Eye, MousePointer, Share2, MessageCircle, TrendingUp } from 'lucide-react';
+import { Eye, MousePointer, Share2, MessageCircle, TrendingUp, Instagram } from 'lucide-react';
 import { Post } from '@/types';
 import {
   Dialog,
@@ -18,7 +18,6 @@ interface AnalyticsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// Simulated engagement data
 const generateEngagementData = () => {
   return Array.from({ length: 7 }, (_, i) => ({
     day: format(new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000), 'dd/MM'),
@@ -47,17 +46,15 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ post, open, onOp
             Analytics do Post
           </DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
-          {/* Post Content */}
           <div className="p-4 rounded-lg bg-muted/30 border border-border">
             <p className="text-sm whitespace-pre-wrap">{post.content}</p>
             <div className="flex gap-2 mt-3">
-              {post.platforms.map((platform) => (
-                <Badge key={platform} variant="outline" className="capitalize">
-                  {platform}
-                </Badge>
-              ))}
+              <Badge variant="outline" className="text-pink-400 border-pink-500/30">
+                <Instagram className="w-3 h-3 mr-1" />
+                Instagram
+              </Badge>
             </div>
             {post.published_at && (
               <p className="text-xs text-muted-foreground mt-2">
@@ -66,7 +63,6 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ post, open, onOp
             )}
           </div>
 
-          {/* Metrics Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {metrics.map((metric) => (
               <div key={metric.label} className="p-4 rounded-lg bg-muted/30 border border-border">
@@ -79,7 +75,6 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ post, open, onOp
             ))}
           </div>
 
-          {/* Engagement Chart */}
           <div className="p-4 rounded-lg bg-muted/30 border border-border">
             <h4 className="text-sm font-medium mb-4">Engajamento (últimos 7 dias)</h4>
             <div className="h-48">
@@ -87,20 +82,20 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ post, open, onOp
                 <LineChart data={engagementData}>
                   <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
                   <YAxis stroke="#64748b" fontSize={12} />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(222 47% 10%)', 
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(222 47% 10%)',
                       border: '1px solid hsl(222 30% 18%)',
                       borderRadius: '8px',
                       color: '#fff'
-                    }} 
+                    }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="engagement" 
-                    stroke="#3B82F6" 
+                  <Line
+                    type="monotone"
+                    dataKey="engagement"
+                    stroke="#EC4899"
                     strokeWidth={2}
-                    dot={{ fill: '#3B82F6' }}
+                    dot={{ fill: '#EC4899' }}
                   />
                 </LineChart>
               </ResponsiveContainer>

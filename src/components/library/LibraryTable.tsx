@@ -1,7 +1,7 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Edit, Copy, BarChart3, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit, Copy, BarChart3, Trash2, ChevronLeft, ChevronRight, Instagram } from 'lucide-react';
 import { Post } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -26,13 +26,6 @@ interface LibraryTableProps {
   onAnalytics: (post: Post) => void;
   onDelete: (post: Post) => void;
 }
-
-const platformColors: Record<string, string> = {
-  instagram: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-  linkedin: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
-  twitter: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
-  tiktok: 'bg-zinc-800 text-zinc-300 border-zinc-600',
-};
 
 const statusColors: Record<string, string> = {
   rascunho: 'bg-muted text-muted-foreground',
@@ -70,6 +63,7 @@ export const LibraryTable: React.FC<LibraryTableProps> = ({
   if (posts.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
+        <Instagram className="w-12 h-12 mx-auto mb-4 text-pink-500/50" />
         <p>Nenhum post encontrado.</p>
       </div>
     );
@@ -81,8 +75,7 @@ export const LibraryTable: React.FC<LibraryTableProps> = ({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="w-[40%]">Conteúdo</TableHead>
-              <TableHead>Redes</TableHead>
+              <TableHead className="w-[50%]">Conteúdo</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Data</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -92,21 +85,8 @@ export const LibraryTable: React.FC<LibraryTableProps> = ({
             {posts.map((post) => (
               <TableRow key={post.id} className="hover:bg-muted/30">
                 <TableCell className="font-medium">
-                  {post.content.substring(0, 50)}
-                  {post.content.length > 50 && '...'}
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {post.platforms.map((platform) => (
-                      <Badge
-                        key={platform}
-                        variant="outline"
-                        className={`text-xs capitalize ${platformColors[platform] || ''}`}
-                      >
-                        {platform}
-                      </Badge>
-                    ))}
-                  </div>
+                  {post.content.substring(0, 60)}
+                  {post.content.length > 60 && '...'}
                 </TableCell>
                 <TableCell>
                   <Badge className={statusColors[post.status] || ''}>

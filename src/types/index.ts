@@ -1,4 +1,4 @@
-export type Platform = 'instagram' | 'linkedin' | 'twitter' | 'tiktok';
+export type Platform = 'instagram';
 
 export type PostStatus = 'rascunho' | 'agendado' | 'publicado';
 

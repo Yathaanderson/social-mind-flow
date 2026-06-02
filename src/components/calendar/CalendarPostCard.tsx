@@ -7,17 +7,14 @@ interface CalendarPostCardProps {
   onClick: (post: Post) => void;
 }
 
-const platformColors: Record<string, string> = {
-  instagram: 'bg-pink-500',
-  linkedin: 'bg-blue-600',
-  twitter: 'bg-sky-500',
-  tiktok: 'bg-zinc-700',
+const statusColors: Record<string, string> = {
+  rascunho: 'bg-gray-500',
+  agendado: 'bg-pink-500',
+  publicado: 'bg-green-500',
 };
 
 export const CalendarPostCard: React.FC<CalendarPostCardProps> = ({ post, onClick }) => {
-  const mainPlatform = post.platforms[0] || 'instagram';
-  const bgColor = platformColors[mainPlatform] || 'bg-primary';
-  
+  const bgColor = statusColors[post.status] || 'bg-pink-500';
   const isDraggable = post.status !== 'publicado';
 
   const handleDragStart = (e: React.DragEvent<HTMLButtonElement>) => {
@@ -25,19 +22,17 @@ export const CalendarPostCard: React.FC<CalendarPostCardProps> = ({ post, onClic
       e.preventDefault();
       return;
     }
-    
+
     e.dataTransfer.setData('application/json', JSON.stringify({
       postId: post.id,
       originalDate: post.scheduled_for || post.published_at,
     }));
     e.dataTransfer.effectAllowed = 'move';
-    
-    // Add dragging class for visual feedback
+
     (e.target as HTMLElement).classList.add('opacity-50', 'scale-95');
   };
 
   const handleDragEnd = (e: React.DragEvent<HTMLButtonElement>) => {
-    // Remove dragging visual feedback
     (e.target as HTMLElement).classList.remove('opacity-50', 'scale-95');
   };
 
@@ -50,8 +45,8 @@ export const CalendarPostCard: React.FC<CalendarPostCardProps> = ({ post, onClic
       className={cn(
         'w-full text-left p-1.5 rounded text-xs text-white truncate transition-all',
         bgColor,
-        isDraggable 
-          ? 'cursor-grab hover:opacity-80 active:cursor-grabbing' 
+        isDraggable
+          ? 'cursor-grab hover:opacity-80 active:cursor-grabbing'
           : 'cursor-not-allowed opacity-70'
       )}
       title={isDraggable ? 'Arraste para reagendar' : 'Post publicado não pode ser movido'}

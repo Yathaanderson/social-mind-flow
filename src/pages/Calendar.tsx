@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { format, addMonths, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post, Platform, PostStatus } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { getScheduledPosts, updatePost, deletePost as deletePostFn } from '@/integrations/firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { CalendarFilters } from '@/components/calendar/CalendarFilters';
@@ -20,12 +20,6 @@ const CalendarPage: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Record<string, boolean>>({
-    instagram: true,
-    linkedin: true,
-    twitter: true,
-    tiktok: true,
-  });
   const [isRescheduling, setIsRescheduling] = useState(false);
 
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -37,22 +31,13 @@ const CalendarPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('user_id', user.id)
-        .or('scheduled_for.not.is.null,published_at.not.is.null')
-        .order('scheduled_for', { ascending: true });
-
-      if (error) throw error;
-      
-      // Cast platforms and status to proper types
-      const typedPosts: Post[] = (data || []).map((post) => ({
+      const data = await getScheduledPosts(user.uid);
+      const typedPosts: Post[] = data.map((post) => ({
         ...post,
         platforms: post.platforms as Platform[],
         status: post.status as PostStatus,
       }));
-      
+
       setPosts(typedPosts);
     } catch (error) {
       toast({
@@ -68,10 +53,6 @@ const CalendarPage: React.FC = () => {
   useEffect(() => {
     fetchPosts();
   }, [fetchPosts]);
-
-  const handleFilterChange = (platform: string, checked: boolean) => {
-    setFilters((prev) => ({ ...prev, [platform]: checked }));
-  };
 
   const handleToday = () => {
     setCurrentDate(new Date());
@@ -90,7 +71,6 @@ const CalendarPage: React.FC = () => {
   };
 
   const handleDateClick = (date: Date) => {
-    // Navigate to create post with pre-filled date
     const formattedDate = format(date, "yyyy-MM-dd'T'HH:mm");
     navigate(`/create?date=${formattedDate}`);
   };
@@ -100,16 +80,10 @@ const CalendarPage: React.FC = () => {
 
     setIsRescheduling(true);
     try {
-      const { error } = await supabase
-        .from('posts')
-        .update({
-          scheduled_for: newDate.toISOString(),
-          status: 'agendado',
-        })
-        .eq('id', postId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
+      await updatePost(postId, {
+        scheduled_for: newDate.toISOString(),
+        status: 'agendado',
+      });
 
       toast({
         title: 'Post reagendado',
@@ -142,12 +116,7 @@ const CalendarPage: React.FC = () => {
     if (!deletePost) return;
 
     try {
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', deletePost.id);
-
-      if (error) throw error;
+      await deletePostFn(deletePost.id);
 
       toast({
         title: 'Post excluído',
@@ -187,11 +156,7 @@ const CalendarPage: React.FC = () => {
       </div>
 
       <div className="glass-card rounded-xl p-4">
-        <CalendarFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onToday={handleToday}
-        />
+        <CalendarFilters onToday={handleToday} />
       </div>
 
       {loading ? (
@@ -202,7 +167,6 @@ const CalendarPage: React.FC = () => {
         <CalendarGrid
           currentDate={currentDate}
           posts={posts}
-          filters={filters}
           onPostClick={handlePostClick}
           onDateClick={handleDateClick}
           onPostDrop={handlePostDrop}

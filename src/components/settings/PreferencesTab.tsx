@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
+import { getUserSettings, updateUserSettings, createUserSettings } from '@/integrations/firebase/firestore';
 
 interface UserSettings {
   notification_enabled: boolean;
@@ -24,25 +24,16 @@ interface UserSettings {
 }
 
 const postingTimes = [
-  '08:00',
-  '09:00',
-  '10:00',
-  '11:00',
-  '12:00',
-  '13:00',
-  '14:00',
-  '15:00',
-  '16:00',
-  '17:00',
-  '18:00',
-  '19:00',
-  '20:00',
+  '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00',
+  '18:00', '19:00', '20:00',
 ];
 
 export const PreferencesTab: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [settingsDocId, setSettingsDocId] = useState<string | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
     notification_enabled: true,
     comment_notification_enabled: true,
@@ -58,15 +49,9 @@ export const PreferencesTab: React.FC = () => {
 
   const fetchSettings = async () => {
     try {
-      const { data, error } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-
+      const data = await getUserSettings(user?.uid || '');
       if (data) {
+        setSettingsDocId(data.id);
         setSettings({
           notification_enabled: data.notification_enabled ?? true,
           comment_notification_enabled: data.comment_notification_enabled ?? true,
@@ -88,17 +73,23 @@ export const PreferencesTab: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('user_settings')
-        .update({
+      if (settingsDocId) {
+        await updateUserSettings(settingsDocId, {
           notification_enabled: settings.notification_enabled,
           comment_notification_enabled: settings.comment_notification_enabled,
           best_posting_time: settings.best_posting_time,
           notification_email: settings.notification_email,
-        })
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
+        });
+      } else {
+        const newId = await createUserSettings({
+          user_id: user?.uid || '',
+          notification_enabled: settings.notification_enabled,
+          comment_notification_enabled: settings.comment_notification_enabled,
+          best_posting_time: settings.best_posting_time,
+          notification_email: settings.notification_email,
+        });
+        setSettingsDocId(newId);
+      }
 
       toast({
         title: 'Preferências salvas',

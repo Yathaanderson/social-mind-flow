@@ -17,7 +17,6 @@ import { cn } from '@/lib/utils';
 interface CalendarGridProps {
   currentDate: Date;
   posts: Post[];
-  filters: Record<string, boolean>;
   onPostClick: (post: Post) => void;
   onDateClick: (date: Date) => void;
   onPostDrop?: (postId: string, newDate: Date) => void;
@@ -28,7 +27,6 @@ const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 export const CalendarGrid: React.FC<CalendarGridProps> = ({
   currentDate,
   posts,
-  filters,
   onPostClick,
   onDateClick,
   onPostDrop,
@@ -46,11 +44,7 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     return posts.filter((post) => {
       const postDate = post.scheduled_for || post.published_at;
       if (!postDate) return false;
-
-      const matchesDate = isSameDay(new Date(postDate), day);
-      const matchesFilter = post.platforms.some((p) => filters[p] !== false);
-
-      return matchesDate && matchesFilter;
+      return isSameDay(new Date(postDate), day);
     });
   };
 
@@ -65,7 +59,6 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    // Only clear if leaving the cell entirely (not entering a child)
     const relatedTarget = e.relatedTarget as HTMLElement;
     if (!e.currentTarget.contains(relatedTarget)) {
       setDragOverDate(null);
@@ -79,11 +72,9 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json'));
       if (data.postId && onPostDrop) {
-        // Preserve the time from the original date, just change the day
         const originalDate = data.originalDate ? new Date(data.originalDate) : new Date();
         const newDate = new Date(day);
         newDate.setHours(originalDate.getHours(), originalDate.getMinutes(), 0, 0);
-        
         onPostDrop(data.postId, newDate);
       }
     } catch (error) {
@@ -93,7 +84,6 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
 
   return (
     <div className="glass-card rounded-xl overflow-hidden">
-      {/* Week days header */}
       <div className="grid grid-cols-7 bg-muted/50">
         {weekDays.map((day) => (
           <div
@@ -105,7 +95,6 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
         ))}
       </div>
 
-      {/* Calendar grid */}
       <div className="grid grid-cols-7">
         {days.map((day, index) => {
           const dayPosts = getPostsForDay(day);

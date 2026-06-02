@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { PlatformSelector } from '@/components/post/PlatformSelector';
 import { ImageUpload } from '@/components/post/ImageUpload';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/integrations/supabase/client';
+import { updatePost } from '@/integrations/firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -25,11 +25,11 @@ interface EditPostModalProps {
   onSaved: () => void;
 }
 
-export const EditPostModal: React.FC<EditPostModalProps> = ({ 
-  post, 
-  open, 
+export const EditPostModal: React.FC<EditPostModalProps> = ({
+  post,
+  open,
   onOpenChange,
-  onSaved 
+  onSaved
 }) => {
   const [content, setContent] = useState('');
   const [platforms, setPlatforms] = useState<Platform[]>([]);
@@ -51,7 +51,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
 
   const handleSave = async () => {
     if (!post) return;
-    
+
     if (!content.trim()) {
       toast({
         title: 'Erro',
@@ -72,27 +72,22 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
 
     setLoading(true);
     try {
-      const updateData: Partial<Post> = {
+      const updateData: Record<string, unknown> = {
         content,
         platforms,
         image_url: imageUrl,
         status,
         scheduled_for: status === 'agendado' && scheduledFor ? new Date(scheduledFor).toISOString() : null,
-        published_at: status === 'publicado' ? new Date().toISOString() : post.published_at
+        published_at: status === 'publicado' ? new Date().toISOString() : post.published_at,
       };
 
-      const { error } = await supabase
-        .from('posts')
-        .update(updateData)
-        .eq('id', post.id);
-
-      if (error) throw error;
+      await updatePost(post.id, updateData);
 
       toast({
         title: 'Sucesso',
         description: 'Post atualizado com sucesso!'
       });
-      
+
       onSaved();
       onOpenChange(false);
     } catch (error) {
@@ -115,7 +110,7 @@ export const EditPostModal: React.FC<EditPostModalProps> = ({
         <DialogHeader>
           <DialogTitle>Editar Post</DialogTitle>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-medium">Conteúdo</label>

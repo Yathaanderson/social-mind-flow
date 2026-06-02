@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, Calendar, Rocket } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Platform } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -14,13 +13,14 @@ import { AIGenerator } from '@/components/post/AIGenerator';
 import { ImageUpload } from '@/components/post/ImageUpload';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { createPost } from '@/integrations/firebase/firestore';
 
 const CreatePost: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [content, setContent] = useState('');
-  const [platforms, setPlatforms] = useState<Platform[]>([]);
+  const [platforms, setPlatforms] = useState<Platform[]>(['instagram']);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [scheduledFor, setScheduledFor] = useState('');
   const [publishNow, setPublishNow] = useState(false);
@@ -37,9 +37,15 @@ const CreatePost: React.FC = () => {
     if (!validate() || !user) return;
     setLoading(true);
     try {
-      const postData = { user_id: user.id, content, platforms, image_url: imageUrl, status, scheduled_for: status === 'agendado' && scheduledFor ? new Date(scheduledFor).toISOString() : null, published_at: status === 'publicado' ? new Date().toISOString() : null };
-      const { error } = await supabase.from('posts').insert(postData);
-      if (error) throw error;
+      await createPost({
+        user_id: user.uid,
+        content,
+        platforms,
+        image_url: imageUrl,
+        status,
+        scheduled_for: status === 'agendado' && scheduledFor ? new Date(scheduledFor).toISOString() : null,
+        published_at: status === 'publicado' ? new Date().toISOString() : null,
+      });
       toast({ title: 'Sucesso!', description: status === 'rascunho' ? 'Rascunho salvo' : status === 'agendado' ? 'Post agendado' : 'Post publicado' });
       navigate('/dashboard');
     } catch (error) { toast({ title: 'Erro', description: 'Não foi possível salvar', variant: 'destructive' }); }

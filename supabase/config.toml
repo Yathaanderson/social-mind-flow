@@ -1,4 +1,0 @@
-project_id = "ihlwbfiuyuovjwzoguqk"
-
-[functions.generate-post-image]
-verify_jwt = false

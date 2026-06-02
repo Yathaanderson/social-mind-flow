@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, CheckCircle, TrendingUp, Clock, Plus } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Calendar, CheckCircle, TrendingUp, Clock, Plus, Instagram } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Post, Platform, PostStatus, DashboardMetrics, PlatformStats, StatusStats } from '@/types';
+import { Post, Platform, PostStatus, DashboardMetrics, StatusStats } from '@/types';
+import { getPosts, deletePost } from '@/integrations/firebase/firestore';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { PostsChart } from '@/components/dashboard/PostsChart';
 import { StatusChart } from '@/components/dashboard/StatusChart';
@@ -22,7 +22,6 @@ const Dashboard: React.FC = () => {
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
   const [metrics, setMetrics] = useState<DashboardMetrics>({ scheduledPosts: 0, publishedThisMonth: 0, averageEngagement: 0, nextPost: null });
-  const [platformStats, setPlatformStats] = useState<PlatformStats[]>([]);
   const [statusStats, setStatusStats] = useState<StatusStats[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
@@ -31,11 +30,18 @@ const Dashboard: React.FC = () => {
 
   const fetchPosts = async () => {
     if (!user) return;
-    const { data, error } = await supabase.from('posts').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(10);
-    if (error) { console.error(error); return; }
-    const typedData = (data || []).map(post => ({ ...post, platforms: post.platforms as Platform[], status: post.status as PostStatus }));
-    setPosts(typedData);
-    calculateMetrics(typedData);
+    try {
+      const data = await getPosts(user.uid, { limitCount: 10 });
+      const typedData: Post[] = data.map(post => ({
+        ...post,
+        platforms: post.platforms as Platform[],
+        status: post.status as PostStatus,
+      }));
+      setPosts(typedData);
+      calculateMetrics(typedData);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const calculateMetrics = (postsData: Post[]) => {
@@ -46,9 +52,7 @@ const Dashboard: React.FC = () => {
     const avgEngagement = postsData.length > 0 ? Math.round(postsData.reduce((acc, p) => acc + (p.engagement_count || 0), 0) / postsData.length) : 0;
     const nextScheduled = postsData.filter(p => p.status === 'agendado' && p.scheduled_for).sort((a, b) => new Date(a.scheduled_for!).getTime() - new Date(b.scheduled_for!).getTime())[0];
     setMetrics({ scheduledPosts: scheduled, publishedThisMonth: published, averageEngagement: avgEngagement, nextPost: nextScheduled?.scheduled_for ? format(new Date(nextScheduled.scheduled_for), "dd MMM, HH:mm", { locale: ptBR }) : null });
-    
-    const platforms: Platform[] = ['instagram', 'linkedin', 'twitter', 'tiktok'];
-    setPlatformStats(platforms.map(p => ({ platform: p, count: postsData.filter(post => post.platforms.includes(p)).length })));
+
     const statuses: PostStatus[] = ['rascunho', 'agendado', 'publicado'];
     setStatusStats(statuses.map(s => ({ status: s, count: postsData.filter(post => post.status === s).length })));
   };
@@ -57,17 +61,23 @@ const Dashboard: React.FC = () => {
 
   const handleDelete = async () => {
     if (!selectedPost) return;
-    const { error } = await supabase.from('posts').delete().eq('id', selectedPost.id);
-    if (error) { toast({ title: 'Erro', description: 'Não foi possível excluir', variant: 'destructive' }); return; }
-    toast({ title: 'Post excluído' });
-    setDeleteOpen(false);
-    fetchPosts();
+    try {
+      await deletePost(selectedPost.id);
+      toast({ title: 'Post excluído' });
+      setDeleteOpen(false);
+      fetchPosts();
+    } catch (error) {
+      toast({ title: 'Erro', description: 'Não foi possível excluir', variant: 'destructive' });
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Instagram className="w-6 h-6 text-pink-500" />
+          Dashboard
+        </h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -78,13 +88,13 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <PostsChart data={platformStats} />
+        <PostsChart postsData={posts.map(p => ({ created_at: p.created_at, status: p.status }))} />
         <StatusChart data={statusStats} />
       </div>
 
       <RecentPosts posts={posts} onEdit={(p) => { setSelectedPost(p); setEditOpen(true); }} onDelete={(p) => { setSelectedPost(p); setDeleteOpen(true); }} onAnalytics={(p) => { setSelectedPost(p); setAnalyticsOpen(true); }} />
 
-      <Button onClick={() => navigate('/create')} className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-primary to-secondary hover:opacity-90" size="icon">
+      <Button onClick={() => navigate('/create')} className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-90" size="icon">
         <Plus className="h-6 w-6" />
       </Button>
 

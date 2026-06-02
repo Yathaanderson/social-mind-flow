@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  PenSquare, 
-  Calendar, 
-  Library, 
-  Settings, 
+import {
+  LayoutDashboard,
+  PenSquare,
+  Calendar,
+  Library,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -13,10 +13,10 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { getProfile } from '@/integrations/firebase/firestore';
 
 interface Profile {
   full_name: string | null;
@@ -44,14 +44,10 @@ const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) =
 
   const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('full_name, avatar_url')
-        .eq('user_id', user?.id)
-        .maybeSingle();
-
-      if (error) throw error;
-      setProfile(data);
+      const data = await getProfile(user?.uid || '');
+      if (data) {
+        setProfile({ full_name: data.full_name, avatar_url: data.avatar_url });
+      }
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
@@ -81,8 +77,8 @@ const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) =
             <Smartphone className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-lg gradient-text">Social Media</h1>
-            <p className="text-xs text-muted-foreground">Manager AI</p>
+            <h1 className="font-bold text-lg gradient-text">Social Mind Flow</h1>
+            <p className="text-xs text-muted-foreground">Instagram Manager</p>
           </div>
         </div>
       </div>
@@ -146,7 +142,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Menu Button */}
       <div className="fixed top-4 left-4 z-50 lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
+          <SheetTrigger asItem>
             <Button size="icon" variant="outline" className="glass-card">
               <Menu className="h-5 w-5" />
             </Button>

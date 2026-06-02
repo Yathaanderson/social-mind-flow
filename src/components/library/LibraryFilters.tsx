@@ -15,8 +15,6 @@ interface LibraryFiltersProps {
   onSearchChange: (value: string) => void;
   statusFilter: string;
   onStatusChange: (value: string) => void;
-  platformFilter: string;
-  onPlatformChange: (value: string) => void;
   onClearFilters: () => void;
 }
 
@@ -25,11 +23,9 @@ export const LibraryFilters: React.FC<LibraryFiltersProps> = ({
   onSearchChange,
   statusFilter,
   onStatusChange,
-  platformFilter,
-  onPlatformChange,
   onClearFilters,
 }) => {
-  const hasFilters = search || statusFilter !== 'all' || platformFilter !== 'all';
+  const hasFilters = search || statusFilter !== 'all';
 
   return (
     <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
@@ -52,19 +48,6 @@ export const LibraryFilters: React.FC<LibraryFiltersProps> = ({
           <SelectItem value="rascunho">Rascunho</SelectItem>
           <SelectItem value="agendado">Agendado</SelectItem>
           <SelectItem value="publicado">Publicado</SelectItem>
-        </SelectContent>
-      </Select>
-
-      <Select value={platformFilter} onValueChange={onPlatformChange}>
-        <SelectTrigger className="w-full sm:w-40">
-          <SelectValue placeholder="Rede Social" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas</SelectItem>
-          <SelectItem value="instagram">Instagram</SelectItem>
-          <SelectItem value="linkedin">LinkedIn</SelectItem>
-          <SelectItem value="twitter">Twitter</SelectItem>
-          <SelectItem value="tiktok">TikTok</SelectItem>
         </SelectContent>
       </Select>
 

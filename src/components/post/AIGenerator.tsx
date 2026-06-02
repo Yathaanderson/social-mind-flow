@@ -4,7 +4,7 @@ import { ToneType } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { supabase } from '@/integrations/supabase/client';
+import { generatePostIdeas } from '@/lib/openai';
 import { useToast } from '@/hooks/use-toast';
 
 interface AIGeneratorProps {
@@ -37,17 +37,8 @@ export const AIGenerator: React.FC<AIGeneratorProps> = ({ onSelectIdea }) => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('generate-post-ideas', {
-        body: { theme, tone }
-      });
-
-      if (error) throw error;
-
-      if (data?.ideas && Array.isArray(data.ideas)) {
-        setIdeas(data.ideas.slice(0, 3));
-      } else {
-        throw new Error('Resposta inválida da API');
-      }
+      const ideas = await generatePostIdeas(theme, tone);
+      setIdeas(ideas);
     } catch (error) {
       console.error('Error generating ideas:', error);
       toast({

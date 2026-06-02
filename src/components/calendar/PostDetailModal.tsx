@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Edit, Trash2, X, Calendar } from 'lucide-react';
+import { Edit, Trash2, X, Calendar, Instagram } from 'lucide-react';
 
 interface PostDetailModalProps {
   post: Post | null;
@@ -19,13 +19,6 @@ interface PostDetailModalProps {
   onEdit: (post: Post) => void;
   onDelete: (post: Post) => void;
 }
-
-const platformColors: Record<string, string> = {
-  instagram: 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-  linkedin: 'bg-blue-600/20 text-blue-400 border-blue-600/30',
-  twitter: 'bg-sky-500/20 text-sky-400 border-sky-500/30',
-  tiktok: 'bg-zinc-800 text-zinc-300 border-zinc-600',
-};
 
 const statusColors: Record<string, string> = {
   rascunho: 'bg-muted text-muted-foreground',
@@ -67,35 +60,26 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Status */}
           <div className="flex items-center gap-2">
             <Badge className={statusColors[post.status]}>
               {statusLabels[post.status]}
             </Badge>
+            <Badge variant="outline" className="text-pink-400 border-pink-500/30">
+              <Instagram className="w-3 h-3 mr-1" />
+              Instagram
+            </Badge>
           </div>
 
-          {/* Content */}
           <div className="p-4 rounded-lg bg-muted/30 border border-border">
             <p className="whitespace-pre-wrap">{post.content}</p>
           </div>
 
-          {/* Platforms */}
-          <div>
-            <p className="text-sm text-muted-foreground mb-2">Redes sociais:</p>
-            <div className="flex flex-wrap gap-2">
-              {post.platforms.map((platform) => (
-                <Badge
-                  key={platform}
-                  variant="outline"
-                  className={`capitalize ${platformColors[platform]}`}
-                >
-                  {platform}
-                </Badge>
-              ))}
+          {post.image_url && (
+            <div className="rounded-lg overflow-hidden border border-border">
+              <img src={post.image_url} alt="Post" className="w-full object-cover max-h-64" />
             </div>
-          </div>
+          )}
 
-          {/* Dates */}
           <div className="space-y-2 text-sm">
             {scheduledDate && (
               <p>
@@ -111,7 +95,6 @@ export const PostDetailModal: React.FC<PostDetailModalProps> = ({
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-2 pt-4 border-t border-border">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               <X className="mr-2 h-4 w-4" />

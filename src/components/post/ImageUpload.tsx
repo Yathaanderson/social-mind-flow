@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react';
 import { Upload, X, Loader2, Link as LinkIcon, Sparkles } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { AIImageGenerator } from './AIImageGenerator';
+import { uploadImage } from '@/integrations/firebase/storage';
 
 interface ImageUploadProps {
   imageUrl: string | null;
@@ -22,7 +22,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ imageUrl, onImageChang
   const [dragOver, setDragOver] = useState(false);
   const [urlInput, setUrlInput] = useState('');
 
-  const uploadFile = async (file: File) => {
+  const handleUploadFile = async (file: File) => {
     if (!user) {
       toast({ title: 'Erro', description: 'Você precisa estar logado', variant: 'destructive' });
       return;
@@ -40,21 +40,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ imageUrl, onImageChang
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('post-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('post-images')
-        .getPublicUrl(filePath);
-
-      onImageChange(publicUrl);
+      const downloadUrl = await uploadImage(user.uid, file);
+      onImageChange(downloadUrl);
       toast({ title: 'Sucesso', description: 'Imagem enviada com sucesso!' });
     } catch (error) {
       console.error('Upload error:', error);
@@ -66,14 +53,14 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ imageUrl, onImageChang
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) uploadFile(file);
+    if (file) handleUploadFile(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) uploadFile(file);
+    if (file) handleUploadFile(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -105,9 +92,9 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ imageUrl, onImageChang
       <div className="space-y-3">
         <label className="text-sm font-medium">Imagem</label>
         <div className="relative rounded-lg overflow-hidden border border-border">
-          <img 
-            src={imageUrl} 
-            alt="Preview" 
+          <img
+            src={imageUrl}
+            alt="Preview"
             className="w-full h-48 object-cover"
           />
           <Button
@@ -126,7 +113,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ imageUrl, onImageChang
   return (
     <div className="space-y-3">
       <label className="text-sm font-medium">Imagem</label>
-      
+
       <Tabs defaultValue="upload" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="upload" className="flex items-center gap-1.5">

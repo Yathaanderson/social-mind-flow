@@ -72,8 +72,8 @@ const Auth: React.FC = () => {
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
             <Smartphone className="w-8 h-8 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold gradient-text">Social Media Manager AI</h1>
-          <p className="text-muted-foreground mt-2">Gerencie suas redes sociais com IA</p>
+          <h1 className="text-2xl font-bold gradient-text">Social Mind Flow</h1>
+          <p className="text-muted-foreground mt-2">Gerencie seu Instagram com IA</p>
         </div>
 
         <div className="glass-card rounded-2xl p-6">

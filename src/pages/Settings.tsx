@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, Instagram } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SocialAccountsTab } from '@/components/settings/SocialAccountsTab';
 import { PreferencesTab } from '@/components/settings/PreferencesTab';
@@ -14,14 +14,17 @@ const Settings: React.FC = () => {
       </h1>
 
       <div className="glass-card rounded-xl p-6">
-        <Tabs defaultValue="social" className="space-y-6">
+        <Tabs defaultValue="instagram" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="social">Redes Sociais</TabsTrigger>
+            <TabsTrigger value="instagram" className="flex items-center gap-1.5">
+              <Instagram className="w-4 h-4 text-pink-500" />
+              Instagram
+            </TabsTrigger>
             <TabsTrigger value="preferences">Preferências</TabsTrigger>
             <TabsTrigger value="account">Conta</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="social">
+          <TabsContent value="instagram">
             <SocialAccountsTab />
           </TabsContent>
 

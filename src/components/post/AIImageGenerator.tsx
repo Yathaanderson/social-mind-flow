@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { generateImage } from '@/lib/openai-image';
 import { useAuth } from '@/contexts/AuthContext';
+import { uploadBlob } from '@/integrations/firebase/storage';
 
 interface AIImageGeneratorProps {
   onImageGenerated: (url: string) => void;
@@ -27,7 +28,7 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
   const [uploading, setUploading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
-  const generateImage = async () => {
+  const handleGenerateImage = async () => {
     if (!prompt.trim()) {
       toast({ title: 'Erro', description: 'Digite uma descrição para a imagem', variant: 'destructive' });
       return;
@@ -37,29 +38,15 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
     setGeneratedImage(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('generate-post-image', {
-        body: { prompt: prompt.trim(), style: style || undefined }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (data.error) {
-        toast({ title: 'Erro', description: data.error, variant: 'destructive' });
-        return;
-      }
-
-      if (data.imageBase64) {
-        setGeneratedImage(data.imageBase64);
-        toast({ title: 'Sucesso', description: 'Imagem gerada com sucesso!' });
-      }
+      const imageBase64 = await generateImage(prompt.trim(), style || undefined);
+      setGeneratedImage(imageBase64);
+      toast({ title: 'Sucesso', description: 'Imagem gerada com sucesso!' });
     } catch (error) {
       console.error('Error generating image:', error);
-      toast({ 
-        title: 'Erro', 
-        description: 'Não foi possível gerar a imagem. Tente novamente.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível gerar a imagem. Tente novamente.',
+        variant: 'destructive'
       });
     } finally {
       setGenerating(false);
@@ -75,37 +62,24 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
       // Convert base64 to blob
       const response = await fetch(generatedImage);
       const blob = await response.blob();
-      
-      // Create file from blob
+
+      // Upload to Firebase Storage
       const fileName = `ai-${Date.now()}.png`;
-      const filePath = `${user.id}/${fileName}`;
-      const file = new File([blob], fileName, { type: 'image/png' });
+      const downloadUrl = await uploadBlob(user.uid, blob, fileName);
 
-      // Upload to storage
-      const { error: uploadError } = await supabase.storage
-        .from('post-images')
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('post-images')
-        .getPublicUrl(filePath);
-
-      onImageGenerated(publicUrl);
+      onImageGenerated(downloadUrl);
       toast({ title: 'Sucesso', description: 'Imagem adicionada ao post!' });
-      
+
       // Reset state
       setGeneratedImage(null);
       setPrompt('');
       setStyle('');
     } catch (error) {
       console.error('Error uploading image:', error);
-      toast({ 
-        title: 'Erro', 
-        description: 'Não foi possível salvar a imagem. Tente novamente.', 
-        variant: 'destructive' 
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível salvar a imagem. Tente novamente.',
+        variant: 'destructive'
       });
     } finally {
       setUploading(false);
@@ -114,7 +88,7 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
 
   const regenerateImage = () => {
     setGeneratedImage(null);
-    generateImage();
+    handleGenerateImage();
   };
 
   return (
@@ -143,8 +117,8 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
         </Select>
 
         {!generatedImage && (
-          <Button 
-            onClick={generateImage} 
+          <Button
+            onClick={handleGenerateImage}
             disabled={generating || !prompt.trim()}
             className="w-full"
           >
@@ -166,16 +140,16 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
       {generatedImage && (
         <div className="space-y-3">
           <div className="relative rounded-lg overflow-hidden border border-border">
-            <img 
-              src={generatedImage} 
-              alt="Imagem gerada por IA" 
+            <img
+              src={generatedImage}
+              alt="Imagem gerada por IA"
               className="w-full h-48 object-cover"
             />
           </div>
-          
+
           <div className="flex gap-2">
-            <Button 
-              onClick={useGeneratedImage} 
+            <Button
+              onClick={useGeneratedImage}
               disabled={uploading}
               className="flex-1"
             >
@@ -191,8 +165,8 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
                 </>
               )}
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={regenerateImage}
               disabled={generating || uploading}
             >
@@ -204,7 +178,7 @@ export const AIImageGenerator: React.FC<AIImageGeneratorProps> = ({ onImageGener
       )}
 
       <p className="text-xs text-muted-foreground text-center">
-        Powered by Lovable AI • As imagens são geradas usando inteligência artificial
+        Powered by DALL-E 3 (OpenAI) • As imagens são geradas usando inteligência artificial
       </p>
     </div>
   );

@@ -1,59 +1,44 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { PlatformStats } from '@/types';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
-const platformColors: Record<string, string> = {
-  instagram: '#EC4899',
-  linkedin: '#0A66C2',
-  twitter: '#1DA1F2',
-  tiktok: '#000000'
-};
-
-const platformLabels: Record<string, string> = {
-  instagram: 'Instagram',
-  linkedin: 'LinkedIn',
-  twitter: 'Twitter',
-  tiktok: 'TikTok'
-};
-
-interface PostsChartProps {
-  data: PlatformStats[];
+interface PostsPerDayData {
+  day: string;
+  count: number;
 }
 
-export const PostsChart: React.FC<PostsChartProps> = ({ data }) => {
-  const chartData = data.map(item => ({
-    name: platformLabels[item.platform] || item.platform,
-    count: item.count,
-    platform: item.platform
-  }));
+interface PostsChartProps {
+  postsData: { created_at: string; status: string }[];
+}
+
+export const PostsChart: React.FC<PostsChartProps> = ({ postsData }) => {
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    const dayKey = format(date, 'yyyy-MM-dd');
+    const dayLabel = format(date, 'dd/MM', { locale: ptBR });
+    const count = postsData.filter(p => format(new Date(p.created_at), 'yyyy-MM-dd') === dayKey).length;
+    return { day: dayLabel, count };
+  });
 
   return (
     <div className="glass-card rounded-xl p-6 animate-slide-up">
-      <h3 className="text-lg font-semibold mb-6">Posts por Rede Social</h3>
+      <h3 className="text-lg font-semibold mb-6">Posts nos Últimos 7 Dias</h3>
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} layout="vertical">
-            <XAxis type="number" stroke="#64748b" fontSize={12} />
-            <YAxis 
-              type="category" 
-              dataKey="name" 
-              stroke="#64748b" 
-              fontSize={12}
-              width={80}
-            />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'hsl(222 47% 10%)', 
+          <BarChart data={last7Days}>
+            <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
+            <YAxis stroke="#64748b" fontSize={12} allowDecimals={false} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: 'hsl(222 47% 10%)',
                 border: '1px solid hsl(222 30% 18%)',
                 borderRadius: '8px',
                 color: '#fff'
-              }} 
+              }}
             />
-            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={platformColors[entry.platform] || '#3B82F6'} />
-              ))}
-            </Bar>
+            <Bar dataKey="count" fill="#EC4899" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

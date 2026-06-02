@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Library as LibraryIcon } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { Library as LibraryIcon, Instagram } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Post, Platform, PostStatus } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { getPostsWithFilter, createPost, deletePost } from '@/integrations/firebase/firestore';
 import { LibraryFilters } from '@/components/library/LibraryFilters';
 import { LibraryTable } from '@/components/library/LibraryTable';
 import { EditPostModal } from '@/components/modals/EditPostModal';
@@ -18,7 +18,6 @@ const Library: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [platformFilter, setPlatformFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
@@ -31,43 +30,21 @@ const Library: React.FC = () => {
 
     setLoading(true);
     try {
-      let query = supabase
-        .from('posts')
-        .select('*', { count: 'exact' })
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const result = await getPostsWithFilter(user.uid, {
+        search: search.trim().slice(0, 100),
+        status: statusFilter,
+        page: currentPage,
+        pageSize: POSTS_PER_PAGE,
+      });
 
-      if (search) {
-        const sanitizedSearch = search.trim().slice(0, 100);
-        if (sanitizedSearch.length >= 2) {
-          query = query.ilike('content', `%${sanitizedSearch}%`);
-        }
-      }
-
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
-      }
-
-      if (platformFilter !== 'all') {
-        query = query.contains('platforms', [platformFilter]);
-      }
-
-      const from = (currentPage - 1) * POSTS_PER_PAGE;
-      const to = from + POSTS_PER_PAGE - 1;
-
-      const { data, error, count } = await query.range(from, to);
-
-      if (error) throw error;
-
-      // Cast platforms and status to proper types
-      const typedPosts: Post[] = (data || []).map((post) => ({
+      const typedPosts: Post[] = result.posts.map((post) => ({
         ...post,
         platforms: post.platforms as Platform[],
         status: post.status as PostStatus,
       }));
 
       setPosts(typedPosts);
-      setTotalCount(count || 0);
+      setTotalCount(result.totalCount);
     } catch (error) {
       toast({
         title: 'Erro ao carregar posts',
@@ -77,7 +54,7 @@ const Library: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, search, statusFilter, platformFilter, currentPage]);
+  }, [user, search, statusFilter, currentPage]);
 
   useEffect(() => {
     fetchPosts();
@@ -85,26 +62,25 @@ const Library: React.FC = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, platformFilter]);
+  }, [search, statusFilter]);
 
   const handleClearFilters = () => {
     setSearch('');
     setStatusFilter('all');
-    setPlatformFilter('all');
     setCurrentPage(1);
   };
 
   const handleDuplicate = async (post: Post) => {
     try {
-      const { error } = await supabase.from('posts').insert({
-        user_id: user?.id,
+      await createPost({
+        user_id: user?.uid || '',
         content: post.content,
         platforms: post.platforms,
         image_url: post.image_url,
         status: 'rascunho',
+        scheduled_for: null,
+        published_at: null,
       });
-
-      if (error) throw error;
 
       toast({
         title: 'Post duplicado',
@@ -125,12 +101,7 @@ const Library: React.FC = () => {
     if (!deletePost) return;
 
     try {
-      const { error } = await supabase
-        .from('posts')
-        .delete()
-        .eq('id', deletePost.id);
-
-      if (error) throw error;
+      await deletePost(deletePost.id);
 
       toast({
         title: 'Post excluído',
@@ -153,7 +124,7 @@ const Library: React.FC = () => {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold flex items-center gap-2">
-        <LibraryIcon className="w-6 h-6 text-primary" />
+        <Instagram className="w-6 h-6 text-pink-500" />
         Biblioteca
       </h1>
 
@@ -163,8 +134,6 @@ const Library: React.FC = () => {
           onSearchChange={setSearch}
           statusFilter={statusFilter}
           onStatusChange={setStatusFilter}
-          platformFilter={platformFilter}
-          onPlatformChange={setPlatformFilter}
           onClearFilters={handleClearFilters}
         />
 
