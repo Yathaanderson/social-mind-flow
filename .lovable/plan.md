@@ -1,174 +1,47 @@
+# Auditoria das novas integrações + correções
 
+Analisei o estado atual do código. A integração com Firebase (Auth, Firestore, Storage) está montada e coerente, e não há erros de runtime registrados no preview. Porém encontrei 4 problemas confirmados que quebram funcionalidades e 1 risco grave de segurança.
 
-# Plano: Geração de Imagens com IA para Posts
+## O que está funcionando
 
-## Objetivo
-Adicionar a capacidade de gerar imagens automaticamente usando o modelo `google/gemini-2.5-flash-image` do Lovable AI, permitindo que usuários criem imagens únicas para seus posts baseadas em descrições textuais.
+- Autenticação (login por e-mail/senha e Google) via Firebase, com proteção de rotas no layout principal.
+- Camada de dados Firestore completa: posts (listagem, filtro, agenda, CRUD), perfis, contas sociais e preferências.
+- Upload de imagens para o Storage e as telas de Studio, Calendário, Biblioteca, Dashboard e Configurações.
 
----
+## Problemas encontrados
 
-## Arquitetura da Solução
+### 1. Chave da OpenAI exposta no navegador (crítico)
+`VITE_OPENAI_API_KEY` está no `.env` e é lida direto no front (`src/lib/openai.ts`, `src/lib/openai-image.ts`). Tudo que começa com `VITE_` vai para o bundle público: qualquer visitante do app publicado pode extrair essa chave e gastar sua conta. A chave atual deve ser considerada vazada e revogada.
 
-```text
-+------------------+       +------------------------+       +-------------------+
-|   ImageUpload    | ----> | generate-post-image    | ----> |   Lovable AI      |
-|   (Frontend)     |       |   (Edge Function)      |       | gemini-flash-image|
-+------------------+       +------------------------+       +-------------------+
-        |                            |                              |
-        v                            v                              v
-  [Prompt do usuário]    [Chamada à API com prompt]    [Retorna base64 da imagem]
-        |                            |                              |
-        v                            v                              v
-+------------------+       +------------------------+       +-------------------+
-| post-images      | <---- |   Upload do base64     | <---- |   Imagem gerada   |
-| (Storage Bucket) |       |   convertido para file |       |                   |
-+------------------+       +------------------------+       +-------------------+
-```
+Correção: mover as chamadas de texto e imagem para o backend (Lovable Cloud), guardando a chave como secret do servidor. Alternativa recomendada: usar o gateway de IA nativo, que já cobre geração de texto e imagem sem chave própria.
 
----
+### 2. Cadastro de novo usuário quebra
+Em `AuthContext.signUp` é chamado `credential.user.updateProfile(...)`, método que não existe na versão modular do Firebase. O usuário é criado, mas o app lança erro logo depois e o nome não é salvo. Correção: usar a função `updateProfile(user, { displayName })` importada de `firebase/auth` e gravar o perfil no Firestore.
 
-## Etapas de Implementação
+### 3. Excluir post na Biblioteca não funciona
+Em `src/pages/Library.tsx` o estado `deletePost` tem o mesmo nome da função importada de exclusão, então o `deletePost(...)` dentro de `handleDelete` chama o objeto do estado, não a função — resultando em erro. Correção: renomear o estado para `postToDelete`.
 
-### 1. Criar Edge Function para Geração de Imagens
+### 4. Menu mobile com prop inválida
+`src/components/layout/Sidebar.tsx` usa `<SheetTrigger asItem>` em vez de `asChild`, gerando botão dentro de botão (HTML inválido e aviso do React). Como você está no preview mobile, esse é o menu lateral. Correção: trocar por `asChild`.
 
-Criar uma nova função `generate-post-image` que:
-- Recebe um prompt descritivo do usuário
-- Chama a API do Lovable AI com o modelo `google/gemini-2.5-flash-image`
-- Retorna a imagem em base64
+### 5. Configuração de TypeScript desatualizada
+`tsconfig.app.json` ainda usa `baseUrl`, opção removida nas versões atuais, o que faz o typecheck falhar. Correção: substituir por `paths: { "*": ["./*"] }` mantendo o alias `@/`.
 
-**Arquivo**: `supabase/functions/generate-post-image/index.ts`
+## Ponto de arquitetura a decidir
 
-```typescript
-// Estrutura da função:
-// - Recebe: { prompt: string, style?: string }
-// - Retorna: { imageBase64: string } ou { error: string }
-// - Usa modalities: ["image", "text"] conforme documentação
-```
+O projeto tem o Lovable Cloud ativo, mas todo o backend real está no Firebase. Manter os dois é fonte de confusão e custo. Além disso, não há arquivos de regras de segurança do Firestore/Storage versionados no projeto — sem regras corretas no console do Firebase, os dados dos usuários podem estar abertos a qualquer um.
 
-### 2. Atualizar config.toml
+Duas opções:
+- **Manter Firebase**: eu documento e versiono as regras recomendadas de Firestore e Storage (cada usuário só lê/escreve os próprios dados) e o backend serve apenas para proteger a chave de IA.
+- **Migrar para o Lovable Cloud**: banco, auth, storage e funções de IA num só lugar, com segurança por linha e sem chave exposta. Migração maior, feita por etapas.
 
-Registrar a nova Edge Function no arquivo de configuração para deploy automático.
+## Conselhos práticos (fora do escopo dos bugs)
 
-### 3. Criar Componente AIImageGenerator
+- Nunca expor chave de provedor de IA no front — toda chamada paga deve passar por função de servidor com limite por usuário.
+- Adicionar tratamento de erro visível quando a geração de IA falhar (hoje alguns fluxos só logam no console).
+- Criar índices no Firestore para as consultas com filtro + ordenação da Biblioteca antes que o volume cresça.
+- Definir metadados de SEO reais no `index.html` (título e descrição do produto) antes de divulgar o link publicado.
 
-Novo componente que:
-- Exibe campo de texto para descrição da imagem
-- Seletor de estilo visual (opcional)
-- Botão para gerar imagem
-- Preview da imagem gerada
-- Botão para usar a imagem no post
+## Escopo técnico da correção (etapa 1)
 
-**Arquivo**: `src/components/post/AIImageGenerator.tsx`
-
-### 4. Atualizar ImageUpload
-
-Integrar o `AIImageGenerator` no componente `ImageUpload` existente, adicionando uma terceira opção além de upload e URL:
-- Upload de arquivo (existente)
-- URL externa (existente)
-- **Gerar com IA (novo)**
-
-### 5. Fluxo de Geração
-
-```text
-1. Usuário digita descrição da imagem
-2. Clica em "Gerar Imagem"
-3. Frontend chama Edge Function
-4. Edge Function chama Lovable AI
-5. Imagem retorna em base64
-6. Frontend converte base64 para File
-7. Faz upload para o bucket post-images
-8. Retorna URL pública para o post
-```
-
----
-
-## Detalhes Técnicos
-
-### Edge Function - generate-post-image
-
-```typescript
-// Payload para o Lovable AI
-{
-  model: "google/gemini-2.5-flash-image",
-  messages: [
-    {
-      role: "user",
-      content: `Crie uma imagem profissional para redes sociais: ${prompt}`
-    }
-  ],
-  modalities: ["image", "text"]
-}
-
-// Resposta esperada
-{
-  choices: [{
-    message: {
-      images: [{
-        image_url: { url: "data:image/png;base64,..." }
-      }]
-    }
-  }]
-}
-```
-
-### Estilos Visuais (Opcional)
-
-O usuário poderá escolher estilos como:
-- **Minimalista** - Clean e moderno
-- **Colorido** - Vibrante e chamativo
-- **Profissional** - Corporativo e formal
-- **Artístico** - Criativo e abstrato
-
-### Tratamento de Erros
-
-- 429 (Rate Limit): Mensagem amigável pedindo para aguardar
-- 402 (Sem créditos): Orientar sobre adição de créditos
-- Outros erros: Mensagem genérica com opção de retry
-
-### Upload da Imagem Gerada
-
-```typescript
-// Converter base64 para File
-const base64Data = imageUrl.replace(/^data:image\/\w+;base64,/, '');
-const blob = await fetch(imageUrl).then(r => r.blob());
-const file = new File([blob], `ai-${Date.now()}.png`, { type: 'image/png' });
-
-// Upload para o bucket (reusa lógica existente)
-await supabase.storage.from('post-images').upload(filePath, file);
-```
-
----
-
-## Arquivos a Serem Criados/Modificados
-
-| Arquivo | Ação | Descrição |
-|---------|------|-----------|
-| `supabase/functions/generate-post-image/index.ts` | Criar | Edge Function para geração |
-| `supabase/config.toml` | Modificar | Registrar nova função |
-| `src/components/post/AIImageGenerator.tsx` | Criar | Componente de geração |
-| `src/components/post/ImageUpload.tsx` | Modificar | Integrar geração com IA |
-
----
-
-## Interface do Usuário
-
-O componente `ImageUpload` terá três abas ou seções:
-
-1. **Upload** - Arrastar ou selecionar arquivo
-2. **URL** - Colar link de imagem externa
-3. **Gerar com IA** - Descrever e gerar imagem
-
-Na seção "Gerar com IA":
-- Campo de texto para descrição
-- Dropdown de estilo (opcional)
-- Botão "Gerar Imagem" com loading state
-- Preview da imagem gerada com botões "Usar" e "Gerar Outra"
-
----
-
-## Considerações de Segurança
-
-- A `LOVABLE_API_KEY` já está configurada automaticamente no backend
-- Imagens são armazenadas no bucket com RLS por usuário
-- Nenhuma chave exposta no frontend
-
+Arquivos a alterar: `src/contexts/AuthContext.tsx`, `src/pages/Library.tsx`, `src/components/layout/Sidebar.tsx`, `tsconfig.app.json`, e a camada de IA (`src/lib/openai*.ts` + componentes que a consomem) movida para chamada de backend.
