@@ -11,6 +11,7 @@ import CreatePost from "./pages/CreatePost";
 import CalendarPage from "./pages/Calendar";
 import Library from "./pages/Library";
 import Settings from "./pages/Settings";
+import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,8 +27,11 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route element={<MainLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/create" element={<CreatePost />} />
+              <Route path="/dashboard" element={<Studio />} />
+              <Route path="/studio" element={<Studio />} />
+              <Route path="/overview" element={<Dashboard />} />
+              <Route path="/create" element={<Studio />} />
+              <Route path="/legacy-create" element={<CreatePost />} />
               <Route path="/calendar" element={<CalendarPage />} />
               <Route path="/library" element={<Library />} />
               <Route path="/settings" element={<Settings />} />

@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   PenSquare,
+  Sparkles,
   Calendar,
   Library,
   Settings,
@@ -25,7 +26,8 @@ interface Profile {
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/create', label: 'Criar Post', icon: PenSquare },
+  { to: '/studio', label: 'Instagram Studio', icon: Sparkles },
+  { to: '/create', label: 'Nova peça', icon: PenSquare },
   { to: '/calendar', label: 'Calendário', icon: Calendar },
   { to: '/library', label: 'Biblioteca', icon: Library },
   { to: '/settings', label: 'Configurações', icon: Settings },
@@ -77,8 +79,8 @@ const SidebarContent: React.FC<{ onNavigate?: () => void }> = ({ onNavigate }) =
             <Smartphone className="w-5 h-5 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-bold text-lg gradient-text">Social Mind Flow</h1>
-            <p className="text-xs text-muted-foreground">Instagram Manager</p>
+            <h1 className="font-bold text-lg gradient-text">Instagram Studio</h1>
+            <p className="text-xs text-muted-foreground">Social Mind Flow</p>
           </div>
         </div>
       </div>
