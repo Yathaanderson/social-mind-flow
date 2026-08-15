@@ -10,6 +10,7 @@ import {
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/client';
+import { upsertProfile } from '@/integrations/firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
