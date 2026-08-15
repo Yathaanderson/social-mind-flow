@@ -6,9 +6,11 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  updateProfile,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/client';
+import { upsertProfile } from '@/integrations/firebase/firestore';
 
 interface AuthContextType {
   user: User | null;
@@ -42,7 +44,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
-    await credential.user.updateProfile({ displayName: fullName });
+    await updateProfile(credential.user, { displayName: fullName });
+    await upsertProfile(credential.user.uid, { full_name: fullName, email });
   };
 
   const signInWithGoogle = async () => {

@@ -23,7 +23,7 @@ const Library: React.FC = () => {
 
   const [editPost, setEditPost] = useState<Post | null>(null);
   const [analyticsPost, setAnalyticsPost] = useState<Post | null>(null);
-  const [deletePost, setDeletePost] = useState<Post | null>(null);
+  const [postToDelete, setPostToDelete] = useState<Post | null>(null);
 
   const fetchPosts = useCallback(async () => {
     if (!user) return;
@@ -98,17 +98,17 @@ const Library: React.FC = () => {
   };
 
   const handleDelete = async () => {
-    if (!deletePost) return;
+    if (!postToDelete) return;
 
     try {
-      await deletePost(deletePost.id);
+      await deletePost(postToDelete.id);
 
       toast({
         title: 'Post excluído',
         description: 'O post foi excluído com sucesso.',
       });
 
-      setDeletePost(null);
+      setPostToDelete(null);
       fetchPosts();
     } catch (error) {
       toast({
@@ -146,7 +146,7 @@ const Library: React.FC = () => {
           onEdit={setEditPost}
           onDuplicate={handleDuplicate}
           onAnalytics={setAnalyticsPost}
-          onDelete={setDeletePost}
+          onDelete={setPostToDelete}
         />
       </div>
 
@@ -164,8 +164,8 @@ const Library: React.FC = () => {
       />
 
       <DeleteConfirmModal
-        open={!!deletePost}
-        onOpenChange={(open) => !open && setDeletePost(null)}
+        open={!!postToDelete}
+        onOpenChange={(open) => !open && setPostToDelete(null)}
         onConfirm={handleDelete}
         title="Excluir post"
         description="Tem certeza que deseja excluir este post? Esta ação não pode ser desfeita."
