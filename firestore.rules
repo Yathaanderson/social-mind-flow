@@ -1,0 +1,53 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore.
+// Princípio: cada usuário autenticado só lê e escreve os próprios documentos.
+// Todo documento das coleções abaixo DEVE ter o campo `user_id` = auth.uid.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // O documento existente pertence ao usuário autenticado
+    function ownsExisting() {
+      return isSignedIn() && resource.data.user_id == request.auth.uid;
+    }
+
+    // O documento sendo criado/atualizado pertence ao usuário autenticado
+    function ownsIncoming() {
+      return isSignedIn() && request.resource.data.user_id == request.auth.uid;
+    }
+
+    // Coleções privadas por usuário (mesmo padrão para todas)
+    match /posts/{postId} {
+      allow read, delete: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming();
+    }
+
+    match /profiles/{profileId} {
+      allow read, delete: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming();
+    }
+
+    match /social_accounts/{accountId} {
+      allow read, delete: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming();
+    }
+
+    match /user_settings/{settingsId} {
+      allow read, delete: if ownsExisting();
+      allow create: if ownsIncoming();
+      allow update: if ownsExisting() && ownsIncoming();
+    }
+
+    // Qualquer outra coleção fica bloqueada por padrão
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
