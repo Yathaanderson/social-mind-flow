@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  updateProfile,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
 import { auth } from '@/integrations/firebase/client';

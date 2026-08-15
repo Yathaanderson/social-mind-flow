@@ -144,7 +144,7 @@ export const Sidebar: React.FC = () => {
       {/* Mobile Menu Button */}
       <div className="fixed top-4 left-4 z-50 lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asItem>
+          <SheetTrigger asChild>
             <Button size="icon" variant="outline" className="glass-card">
               <Menu className="h-5 w-5" />
             </Button>
