@@ -1,0 +1,60 @@
+name: Deploy Firebase Rules
+
+# Publica firestore.rules, firestore.indexes.json e storage.rules
+# sempre que esses arquivos mudarem na branch de produção (main).
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "firestore.rules"
+      - "firestore.indexes.json"
+      - "storage.rules"
+      - "firebase.json"
+      - ".github/workflows/deploy-firebase-rules.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-rules
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy rules & indexes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@13
+
+      - name: Write service account credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT ausente."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+        run: |
+          firebase deploy \
+            --project "$FIREBASE_PROJECT_ID" \
+            --only firestore:rules,firestore:indexes,storage \
+            --non-interactive \
+            --force
+
+      - name: Cleanup credentials
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
