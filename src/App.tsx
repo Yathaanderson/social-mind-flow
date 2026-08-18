@@ -25,7 +25,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Index />} />
             <Route element={<MainLayout />}>
               <Route path="/dashboard" element={<Studio />} />
               <Route path="/studio" element={<Studio />} />
