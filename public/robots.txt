@@ -12,3 +12,5 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+Sitemap: https://social-mind-flow.lovable.app/sitemap.xml
