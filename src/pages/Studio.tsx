@@ -8,6 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { formatLabels, objectiveLabels, studioAgents } from '@/data/agents';
 import type { BrandProfile, GeneratedPiece, ProductContext, StudioAgent } from '@/types/studio';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { createPost } from '@/integrations/firebase/firestore';
 
 const initialBrand: BrandProfile = {
   name: 'Minha marca', niche: 'Produtos e serviços', audience: 'Pessoas que buscam soluções práticas', tone: 'Direto, próximo e útil', primaryCta: 'Acesse o link da bio', preferredWords: 'prático, simples, real', forbiddenWords: 'garantia, cura, resultado absoluto',
@@ -35,25 +38,50 @@ const iconForAgent = (id: string) => {
 
 export default function Studio() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [brand, setBrand] = useState(initialBrand);
   const [product, setProduct] = useState(initialProduct);
   const [selectedAgent, setSelectedAgent] = useState<StudioAgent>(studioAgents[0]);
   const [piece, setPiece] = useState<GeneratedPiece | null>(null);
   const [filter, setFilter] = useState('Todos');
   const [saved, setSaved] = useState<GeneratedPiece[]>([]);
+  const [saving, setSaving] = useState(false);
   const categories = ['Todos', ...Array.from(new Set(studioAgents.map((agent) => agent.category)))];
   const visibleAgents = useMemo(() => filter === 'Todos' ? studioAgents : studioAgents.filter((agent) => agent.category === filter), [filter]);
 
   const updateBrand = (key: keyof BrandProfile, value: string) => setBrand((current) => ({ ...current, [key]: value }));
   const updateProduct = (key: keyof ProductContext, value: string) => setProduct((current) => ({ ...current, [key]: value }));
   const generate = () => { const next = createPiece(selectedAgent, product, brand); setPiece(next); toast({ title: 'Peça gerada', description: `${selectedAgent.name} criou uma peça revisável.` }); };
-  const savePiece = () => { if (!piece) return; setSaved((current) => [piece, ...current]); toast({ title: 'Conteúdo salvo', description: 'A peça foi adicionada à biblioteca do Studio.' }); };
+  const savePiece = async () => {
+    if (!piece) return;
+    if (!user) { toast({ title: 'Entre na sua conta', description: 'É preciso estar autenticado para salvar na biblioteca.', variant: 'destructive' }); return; }
+    setSaving(true);
+    try {
+      await createPost({
+        user_id: user.uid,
+        content: `${piece.caption}\n\n---\nRoteiro (${formatLabels[piece.format]}):\n${piece.script}`,
+        platforms: ['instagram'],
+        image_url: null,
+        status: 'rascunho',
+        scheduled_for: null,
+        published_at: null,
+      });
+      setSaved((current) => [piece, ...current]);
+      toast({ title: 'Conteúdo salvo', description: 'A peça virou um rascunho na sua biblioteca.' });
+    } catch (error) {
+      toast({ title: 'Erro ao salvar', description: 'Não foi possível gravar a peça na biblioteca.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
   const copy = async (text: string) => { await navigator.clipboard?.writeText(text); toast({ title: 'Copiado', description: 'Conteúdo copiado para a área de transferência.' }); };
+
 
   return <div className="studio-shell space-y-8">
     <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
       <div><div className="eyebrow">Instagram Studio · espaço de criação</div><h1 className="studio-title">Transforme contexto em conteúdo.</h1><p className="studio-subtitle">Escolha um agente, informe o produto e receba uma peça pronta para revisão — com o contexto da sua marca preservado.</p></div>
-      <div className="flex gap-3"><Button variant="outline" onClick={() => setSaved([])}><LibraryBig className="mr-2 h-4 w-4" />Biblioteca <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs">{saved.length}</span></Button><Button onClick={generate}><Sparkles className="mr-2 h-4 w-4" />Gerar peça</Button></div>
+      <div className="flex gap-3"><Button variant="outline" onClick={() => navigate('/library')}><LibraryBig className="mr-2 h-4 w-4" />Biblioteca <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs">{saved.length}</span></Button><Button onClick={generate}><Sparkles className="mr-2 h-4 w-4" />Gerar peça</Button></div>
     </header>
 
     <div className="grid gap-6 xl:grid-cols-[330px_1fr_420px]">
@@ -78,7 +106,7 @@ export default function Studio() {
         <section className="studio-panel"><div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p className="studio-kicker">Central de agentes</p><h2 className="studio-section-title">Escolha o tipo de resultado.</h2></div><div className="flex flex-wrap gap-2">{categories.map((category) => <button key={category} onClick={() => setFilter(category)} className={`studio-filter ${filter === category ? 'studio-filter-active' : ''}`}>{category}</button>)}</div></div><div className="grid gap-3 md:grid-cols-2">{visibleAgents.map((agent) => { const Icon = iconForAgent(agent.id); return <button key={agent.id} onClick={() => setSelectedAgent(agent)} className={`agent-option ${selectedAgent.id === agent.id ? 'agent-option-selected' : ''}`}><div className="agent-option-icon"><Icon className="h-5 w-5" /></div><div className="min-w-0 text-left"><div className="flex items-center gap-2"><p className="truncate font-semibold">{agent.name}</p>{selectedAgent.id === agent.id && <Check className="h-4 w-4 text-primary" />}</div><p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{agent.description}</p><div className="mt-2 flex gap-2"><span className="text-[10px] uppercase tracking-wider text-primary">{formatLabels[agent.format]}</span><span className="text-[10px] uppercase tracking-wider text-muted-foreground">{objectiveLabels[agent.objective]}</span></div></div></button>; })}</div></section>
       </main>
 
-      <section className="studio-panel studio-output"><div className="flex items-center justify-between"><div><p className="studio-kicker">Workspace</p><h2 className="studio-section-title">{piece ? 'Peça em revisão' : 'A resposta aparece aqui'}</h2></div><Badge className="bg-amber-400/15 text-amber-300 hover:bg-amber-400/15">{piece ? 'Em revisão' : 'Aguardando geração'}</Badge></div>{piece ? <Tabs defaultValue="script" className="mt-5"><TabsList className="grid w-full grid-cols-4 bg-muted/50"><TabsTrigger value="script">Roteiro</TabsTrigger><TabsTrigger value="caption">Copy</TabsTrigger><TabsTrigger value="visual">Visual</TabsTrigger><TabsTrigger value="audit">Auditoria</TabsTrigger></TabsList><TabsContent value="script" className="mt-5 space-y-4"><div><p className="output-label">Gancho</p><p className="output-hook">{piece.hook}</p></div><div><p className="output-label">Roteiro</p><pre className="output-pre">{piece.script}</pre></div><Button variant="outline" size="sm" onClick={() => copy(piece.script)}><Copy className="mr-2 h-4 w-4" />Copiar roteiro</Button></TabsContent><TabsContent value="caption" className="mt-5 space-y-4"><p className="output-label">Legenda sugerida</p><pre className="output-pre whitespace-pre-wrap">{piece.caption}</pre><Button variant="outline" size="sm" onClick={() => copy(piece.caption)}><Copy className="mr-2 h-4 w-4" />Copiar legenda</Button></TabsContent><TabsContent value="visual" className="mt-5 space-y-4"><p className="output-label">Prompt de mídia</p><pre className="output-pre whitespace-pre-wrap">{piece.visualPrompt}</pre><div className="output-placeholder"><Image className="h-5 w-5" />Prompt pronto para Canva, CapCut ou gerador visual</div></TabsContent><TabsContent value="audit" className="mt-5 space-y-4"><div className="space-y-3"><div className="audit-row"><ShieldCheck className="h-4 w-4 text-emerald-400" /><span>Formato compatível com Instagram: {formatLabels[piece.format]}</span></div><div className="audit-row"><Check className="h-4 w-4 text-emerald-400" /><span>CTA definido: {piece.cta}</span></div><div className="audit-row"><ShieldCheck className="h-4 w-4 text-amber-400" /><span>{piece.disclosureRequired ? 'Divulgação comercial obrigatória: revisar rótulo de parceria paga.' : 'Sem comissão indicada na ficha.'}</span></div>{piece.warnings.map((warning) => <div key={warning} className="audit-row audit-warning"><ShieldCheck className="h-4 w-4" /><span>{warning}</span></div>)}</div></TabsContent><div className="mt-6 flex gap-2"><Button onClick={savePiece}><LibraryBig className="mr-2 h-4 w-4" />Salvar na biblioteca</Button><Button variant="outline" onClick={generate}><WandSparkles className="mr-2 h-4 w-4" />Regenerar</Button></div></Tabs> : <div className="flex min-h-[470px] flex-col items-center justify-center text-center"><div className="studio-empty-icon"><FileText className="h-7 w-7" /></div><h3 className="mt-5 font-serif text-xl">Pronto para criar?</h3><p className="mt-2 max-w-[260px] text-sm leading-relaxed text-muted-foreground">Cadastre o produto, escolha um agente e gere uma peça revisável em um clique.</p><Button className="mt-6" onClick={generate}><Plus className="mr-2 h-4 w-4" />Criar primeira peça</Button></div>}</section>
+      <section className="studio-panel studio-output"><div className="flex items-center justify-between"><div><p className="studio-kicker">Workspace</p><h2 className="studio-section-title">{piece ? 'Peça em revisão' : 'A resposta aparece aqui'}</h2></div><Badge className="bg-amber-400/15 text-amber-300 hover:bg-amber-400/15">{piece ? 'Em revisão' : 'Aguardando geração'}</Badge></div>{piece ? <Tabs defaultValue="script" className="mt-5"><TabsList className="grid w-full grid-cols-4 bg-muted/50"><TabsTrigger value="script">Roteiro</TabsTrigger><TabsTrigger value="caption">Copy</TabsTrigger><TabsTrigger value="visual">Visual</TabsTrigger><TabsTrigger value="audit">Auditoria</TabsTrigger></TabsList><TabsContent value="script" className="mt-5 space-y-4"><div><p className="output-label">Gancho</p><p className="output-hook">{piece.hook}</p></div><div><p className="output-label">Roteiro</p><pre className="output-pre">{piece.script}</pre></div><Button variant="outline" size="sm" onClick={() => copy(piece.script)}><Copy className="mr-2 h-4 w-4" />Copiar roteiro</Button></TabsContent><TabsContent value="caption" className="mt-5 space-y-4"><p className="output-label">Legenda sugerida</p><pre className="output-pre whitespace-pre-wrap">{piece.caption}</pre><Button variant="outline" size="sm" onClick={() => copy(piece.caption)}><Copy className="mr-2 h-4 w-4" />Copiar legenda</Button></TabsContent><TabsContent value="visual" className="mt-5 space-y-4"><p className="output-label">Prompt de mídia</p><pre className="output-pre whitespace-pre-wrap">{piece.visualPrompt}</pre><div className="output-placeholder"><Image className="h-5 w-5" />Prompt pronto para Canva, CapCut ou gerador visual</div></TabsContent><TabsContent value="audit" className="mt-5 space-y-4"><div className="space-y-3"><div className="audit-row"><ShieldCheck className="h-4 w-4 text-emerald-400" /><span>Formato compatível com Instagram: {formatLabels[piece.format]}</span></div><div className="audit-row"><Check className="h-4 w-4 text-emerald-400" /><span>CTA definido: {piece.cta}</span></div><div className="audit-row"><ShieldCheck className="h-4 w-4 text-amber-400" /><span>{piece.disclosureRequired ? 'Divulgação comercial obrigatória: revisar rótulo de parceria paga.' : 'Sem comissão indicada na ficha.'}</span></div>{piece.warnings.map((warning) => <div key={warning} className="audit-row audit-warning"><ShieldCheck className="h-4 w-4" /><span>{warning}</span></div>)}</div></TabsContent><div className="mt-6 flex gap-2"><Button onClick={savePiece} disabled={saving}><LibraryBig className="mr-2 h-4 w-4" />{saving ? 'Salvando...' : 'Salvar na biblioteca'}</Button><Button variant="outline" onClick={generate}><WandSparkles className="mr-2 h-4 w-4" />Regenerar</Button></div></Tabs> : <div className="flex min-h-[470px] flex-col items-center justify-center text-center"><div className="studio-empty-icon"><FileText className="h-7 w-7" /></div><h3 className="mt-5 font-serif text-xl">Pronto para criar?</h3><p className="mt-2 max-w-[260px] text-sm leading-relaxed text-muted-foreground">Cadastre o produto, escolha um agente e gere uma peça revisável em um clique.</p><Button className="mt-6" onClick={generate}><Plus className="mr-2 h-4 w-4" />Criar primeira peça</Button></div>}</section>
     </div>
 
     <footer className="flex flex-col gap-3 border-t border-border/60 pt-5 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between"><span><strong className="text-foreground">{brand.name}</strong> · {brand.niche}</span><span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" />Conteúdo gerado para revisão humana antes da publicação</span></footer>
