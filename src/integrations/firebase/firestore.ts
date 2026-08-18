@@ -27,16 +27,22 @@ const USER_SETTINGS_COLLECTION = 'user_settings';
 
 // --- Posts ---
 
-export async function getPosts(userId: string, opts?: { limitCount?: number }) {
-  const constraints: QueryConstraint[] = [
-    where('user_id', '==', userId),
-    orderBy('created_at', 'desc'),
-  ];
-  if (opts?.limitCount) constraints.push(limit(opts.limitCount));
+// Observação: as consultas usam apenas `where('user_id')` e ordenam no cliente.
+// Isso evita a necessidade de índices compostos no Firestore.
 
-  const q = query(collection(db, POSTS_COLLECTION), ...constraints);
+function sortByCreatedDesc<T extends { created_at: string }>(items: T[]) {
+  return [...items].sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+async function fetchUserPosts(userId: string) {
+  const q = query(collection(db, POSTS_COLLECTION), where('user_id', '==', userId));
   const snap = await getDocs(q);
-  return snap.docs.map((d) => convertPostDoc(d));
+  return sortByCreatedDesc(snap.docs.map((d) => convertPostDoc(d)));
+}
+
+export async function getPosts(userId: string, opts?: { limitCount?: number }) {
+  const posts = await fetchUserPosts(userId);
+  return opts?.limitCount ? posts.slice(0, opts.limitCount) : posts;
 }
 
 export async function getPostsWithFilter(
@@ -48,24 +54,14 @@ export async function getPostsWithFilter(
     pageSize?: number;
   } = {}
 ) {
-  const constraints: QueryConstraint[] = [
-    where('user_id', '==', userId),
-    orderBy('created_at', 'desc'),
-  ];
-
-  if (opts.status && opts.status !== 'all') {
-    constraints.push(where('status', '==', opts.status));
-  }
-
   const pageSize = opts.pageSize || 10;
   const page = opts.page || 1;
 
-  // Firestore doesn't support ILIKE. We do client-side search.
-  // For pagination, fetch all matching and slice client-side.
-  // For production, consider Algolia/Typesense for full-text search.
-  const q = query(collection(db, POSTS_COLLECTION), ...constraints);
-  const snap = await getDocs(q);
-  let allPosts = snap.docs.map((d) => convertPostDoc(d));
+  let allPosts = await fetchUserPosts(userId);
+
+  if (opts.status && opts.status !== 'all') {
+    allPosts = allPosts.filter((p) => p.status === opts.status);
+  }
 
   if (opts.search && opts.search.trim().length >= 2) {
     const term = opts.search.trim().toLowerCase();
@@ -80,16 +76,13 @@ export async function getPostsWithFilter(
 }
 
 export async function getScheduledPosts(userId: string) {
-  const q = query(
-    collection(db, POSTS_COLLECTION),
-    where('user_id', '==', userId),
-    orderBy('scheduled_for', 'asc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => convertPostDoc(d)).filter(
-    (p) => p.scheduled_for !== null || p.published_at !== null
-  );
+  const posts = await fetchUserPosts(userId);
+  return posts
+    .filter((p) => p.scheduled_for !== null || p.published_at !== null)
+    .sort((a, b) => ((a.scheduled_for || a.published_at || '') > (b.scheduled_for || b.published_at || '') ? 1 : -1));
 }
+
+
 
 export async function createPost(data: {
   user_id: string;
