@@ -21,6 +21,26 @@ firebase use <seu-project-id>
 firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
 
+## Deploy automático (GitHub Actions)
+
+O workflow `.github/workflows/deploy-firebase-rules.yml` publica as regras e os
+índices toda vez que um desses arquivos muda na branch **main** (também dá para
+rodar manualmente em Actions → Deploy Firebase Rules → Run workflow).
+
+Antes do primeiro uso, configure em **GitHub → Settings → Secrets and variables
+→ Actions**:
+
+| Secret | Valor |
+| --- | --- |
+| `FIREBASE_PROJECT_ID` | ID do projeto Firebase (ex.: `meu-app-1234`) |
+| `FIREBASE_SERVICE_ACCOUNT` | JSON completo de uma service account do projeto |
+
+Como gerar a service account: Console do Firebase → Configurações do projeto →
+Contas de serviço → Gerar nova chave privada. A conta precisa dos papéis
+**Firebase Rules Admin** e **Cloud Datastore Index Admin** (a chave padrão
+"Firebase Admin SDK" já atende). Cole o conteúdo do arquivo `.json` inteiro no
+secret — nunca faça commit dele.
+
 Enquanto esse deploy não for feito, as regras que valem são as que estão hoje no
 console do Firebase — se o projeto foi criado em modo de teste, os dados estão
 abertos e expiram (ou já expiraram) automaticamente.
