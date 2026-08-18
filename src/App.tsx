@@ -13,6 +13,7 @@ import Library from "./pages/Library";
 import Settings from "./pages/Settings";
 import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
 
 const queryClient = new QueryClient();
 
