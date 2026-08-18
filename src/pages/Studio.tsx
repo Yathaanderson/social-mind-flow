@@ -35,20 +35,45 @@ const iconForAgent = (id: string) => {
 
 export default function Studio() {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [brand, setBrand] = useState(initialBrand);
   const [product, setProduct] = useState(initialProduct);
   const [selectedAgent, setSelectedAgent] = useState<StudioAgent>(studioAgents[0]);
   const [piece, setPiece] = useState<GeneratedPiece | null>(null);
   const [filter, setFilter] = useState('Todos');
   const [saved, setSaved] = useState<GeneratedPiece[]>([]);
+  const [saving, setSaving] = useState(false);
   const categories = ['Todos', ...Array.from(new Set(studioAgents.map((agent) => agent.category)))];
   const visibleAgents = useMemo(() => filter === 'Todos' ? studioAgents : studioAgents.filter((agent) => agent.category === filter), [filter]);
 
   const updateBrand = (key: keyof BrandProfile, value: string) => setBrand((current) => ({ ...current, [key]: value }));
   const updateProduct = (key: keyof ProductContext, value: string) => setProduct((current) => ({ ...current, [key]: value }));
   const generate = () => { const next = createPiece(selectedAgent, product, brand); setPiece(next); toast({ title: 'Peça gerada', description: `${selectedAgent.name} criou uma peça revisável.` }); };
-  const savePiece = () => { if (!piece) return; setSaved((current) => [piece, ...current]); toast({ title: 'Conteúdo salvo', description: 'A peça foi adicionada à biblioteca do Studio.' }); };
+  const savePiece = async () => {
+    if (!piece) return;
+    if (!user) { toast({ title: 'Entre na sua conta', description: 'É preciso estar autenticado para salvar na biblioteca.', variant: 'destructive' }); return; }
+    setSaving(true);
+    try {
+      await createPost({
+        user_id: user.uid,
+        content: `${piece.caption}\n\n---\nRoteiro (${formatLabels[piece.format]}):\n${piece.script}`,
+        platforms: ['instagram'],
+        image_url: null,
+        status: 'rascunho',
+        scheduled_for: null,
+        published_at: null,
+      });
+      setSaved((current) => [piece, ...current]);
+      toast({ title: 'Conteúdo salvo', description: 'A peça virou um rascunho na sua biblioteca.' });
+    } catch (error) {
+      toast({ title: 'Erro ao salvar', description: 'Não foi possível gravar a peça na biblioteca.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
   const copy = async (text: string) => { await navigator.clipboard?.writeText(text); toast({ title: 'Copiado', description: 'Conteúdo copiado para a área de transferência.' }); };
+
 
   return <div className="studio-shell space-y-8">
     <header className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
