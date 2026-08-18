@@ -45,7 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, fullName: string) => {
     const credential = await createUserWithEmailAndPassword(auth, email, password);
     await updateProfile(credential.user, { displayName: fullName });
-    await upsertProfile(credential.user.uid, { full_name: fullName, email });
+    try {
+      await upsertProfile(credential.user.uid, { full_name: fullName, email });
+    } catch (error) {
+      // O cadastro no Auth já foi concluído; o perfil pode ser sincronizado depois.
+      console.warn('Não foi possível criar o perfil no Firestore agora:', error);
+    }
   };
 
   const signInWithGoogle = async () => {
