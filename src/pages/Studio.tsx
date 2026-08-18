@@ -8,6 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { formatLabels, objectiveLabels, studioAgents } from '@/data/agents';
 import type { BrandProfile, GeneratedPiece, ProductContext, StudioAgent } from '@/types/studio';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { createPost } from '@/integrations/firebase/firestore';
 
 const initialBrand: BrandProfile = {
   name: 'Minha marca', niche: 'Produtos e serviços', audience: 'Pessoas que buscam soluções práticas', tone: 'Direto, próximo e útil', primaryCta: 'Acesse o link da bio', preferredWords: 'prático, simples, real', forbiddenWords: 'garantia, cura, resultado absoluto',
