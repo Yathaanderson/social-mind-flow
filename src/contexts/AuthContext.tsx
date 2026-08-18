@@ -21,7 +21,15 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// Singleton context: survives Vite HMR module re-evaluation so the provider and
+// consumers always share the same context instance.
+const globalScope = globalThis as typeof globalThis & {
+  __authContext?: React.Context<AuthContextType | undefined>;
+};
+
+const AuthContext =
+  globalScope.__authContext ??
+  (globalScope.__authContext = createContext<AuthContextType | undefined>(undefined));
 
 const googleProvider = new GoogleAuthProvider();
 
