@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
 const Auth: React.FC = () => {
-  const { user, signIn, signUp, signInWithGoogle, loading } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle, resetPassword, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
   const { toast } = useToast();
 
   if (loading) {
@@ -65,6 +66,23 @@ const Auth: React.FC = () => {
     }
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      await resetPassword(email);
+      toast({
+        title: 'E-mail enviado!',
+        description: 'Se o e-mail estiver cadastrado, você receberá o link para redefinir a senha.',
+      });
+      setShowForgot(false);
+    } catch (error) {
+      toast({ title: 'Erro ao enviar', description: 'Verifique o e-mail informado e tente novamente.', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-primary/5">
       <div className="w-full max-w-md">
@@ -77,6 +95,33 @@ const Auth: React.FC = () => {
         </div>
 
         <div className="glass-card rounded-2xl p-6">
+          {showForgot ? (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">Redefinir senha</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Informe seu e-mail para receber o link de redefinição de senha.
+                </p>
+              </div>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="emailReset">Email</Label>
+                  <Input id="emailReset" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" required className="bg-muted/50" />
+                </div>
+                <Button type="submit" className="w-full" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  Enviar link de redefinição
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(false)}
+                  className="w-full text-center text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  Voltar para o login
+                </button>
+              </form>
+            </div>
+          ) : (
           <Tabs defaultValue="login">
             <TabsList className="w-full mb-6">
               <TabsTrigger value="login" className="flex-1">Entrar</TabsTrigger>
@@ -92,6 +137,15 @@ const Auth: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="password">Senha</Label>
                   <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="bg-muted/50" />
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgot(true)}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Esqueci minha senha
+                  </button>
                 </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
