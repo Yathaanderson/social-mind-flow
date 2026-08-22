@@ -46,6 +46,8 @@ export const AccountTab: React.FC = () => {
           email: data.email ?? user?.email ?? '',
           avatar_url: data.avatar_url,
         });
+      } else {
+        setProfile((prev) => ({ ...prev, email: user?.email ?? '' }));
       }
     } catch (error) {
       toast({
