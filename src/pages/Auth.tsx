@@ -223,6 +223,7 @@ const Auth: React.FC = () => {
               </form>
             </TabsContent>
           </Tabs>
+          )}
         </div>
       </div>
     </div>
