@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, LogOut, User } from 'lucide-react';
+import { Loader2, LogOut, User, KeyRound } from 'lucide-react';
 import { getProfile, upsertProfile } from '@/integrations/firebase/firestore';
 
 interface Profile {
@@ -17,10 +17,14 @@ interface Profile {
 }
 
 export const AccountTab: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [profile, setProfile] = useState<Profile>({
     full_name: '',
     email: '',
@@ -42,6 +46,8 @@ export const AccountTab: React.FC = () => {
           email: data.email ?? user?.email ?? '',
           avatar_url: data.avatar_url,
         });
+      } else {
+        setProfile((prev) => ({ ...prev, email: user?.email ?? '' }));
       }
     } catch (error) {
       toast({
@@ -75,6 +81,49 @@ export const AccountTab: React.FC = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Senha muito curta',
+        description: 'A nova senha deve ter pelo menos 6 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Senhas diferentes',
+        description: 'A confirmação não confere com a nova senha.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      toast({
+        title: 'Senha atualizada',
+        description: 'Sua senha foi alterada com sucesso.',
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      const code = (error as { code?: string })?.code || '';
+      let description = 'Não foi possível alterar sua senha.';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        description = 'A senha atual informada está incorreta.';
+      } else if (code === 'auth/weak-password') {
+        description = 'A nova senha é muito fraca. Use pelo menos 6 caracteres.';
+      } else if (code === 'auth/too-many-requests') {
+        description = 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+      }
+      toast({ title: 'Erro ao alterar senha', description, variant: 'destructive' });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -178,6 +227,57 @@ export const AccountTab: React.FC = () => {
         <Button variant="destructive" onClick={handleLogout}>
           <LogOut className="mr-2 h-4 w-4" />
           Sair da conta
+        </Button>
+      </div>
+
+      <div className="border-t border-muted pt-6 space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Alterar senha</h3>
+          <p className="text-sm text-muted-foreground">
+            Confirme sua senha atual para definir uma nova senha de acesso.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="current_password">Senha atual</Label>
+          <Input
+            id="current_password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new_password">Nova senha</Label>
+          <Input
+            id="new_password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Mínimo 6 caracteres"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirm_password">Confirmar nova senha</Label>
+          <Input
+            id="confirm_password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repita a nova senha"
+          />
+        </div>
+
+        <Button
+          onClick={handleChangePassword}
+          disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+        >
+          {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <KeyRound className="mr-2 h-4 w-4" />
+          Atualizar senha
         </Button>
       </div>
     </div>
