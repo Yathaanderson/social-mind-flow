@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, LogOut, User } from 'lucide-react';
+import { Loader2, LogOut, User, KeyRound } from 'lucide-react';
 import { getProfile, upsertProfile } from '@/integrations/firebase/firestore';
 
 interface Profile {
@@ -17,10 +17,14 @@ interface Profile {
 }
 
 export const AccountTab: React.FC = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, changePassword } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [profile, setProfile] = useState<Profile>({
     full_name: '',
     email: '',
@@ -75,6 +79,49 @@ export const AccountTab: React.FC = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast({
+        title: 'Senha muito curta',
+        description: 'A nova senha deve ter pelo menos 6 caracteres.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: 'Senhas diferentes',
+        description: 'A confirmação não confere com a nova senha.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      toast({
+        title: 'Senha atualizada',
+        description: 'Sua senha foi alterada com sucesso.',
+      });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      const code = (error as { code?: string })?.code || '';
+      let description = 'Não foi possível alterar sua senha.';
+      if (code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        description = 'A senha atual informada está incorreta.';
+      } else if (code === 'auth/weak-password') {
+        description = 'A nova senha é muito fraca. Use pelo menos 6 caracteres.';
+      } else if (code === 'auth/too-many-requests') {
+        description = 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+      }
+      toast({ title: 'Erro ao alterar senha', description, variant: 'destructive' });
+    } finally {
+      setChangingPassword(false);
     }
   };
 
