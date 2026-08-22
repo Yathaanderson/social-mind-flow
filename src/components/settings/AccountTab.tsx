@@ -227,6 +227,57 @@ export const AccountTab: React.FC = () => {
           Sair da conta
         </Button>
       </div>
+
+      <div className="border-t border-muted pt-6 space-y-4">
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Alterar senha</h3>
+          <p className="text-sm text-muted-foreground">
+            Confirme sua senha atual para definir uma nova senha de acesso.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="current_password">Senha atual</Label>
+          <Input
+            id="current_password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="••••••••"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="new_password">Nova senha</Label>
+          <Input
+            id="new_password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Mínimo 6 caracteres"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirm_password">Confirmar nova senha</Label>
+          <Input
+            id="confirm_password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Repita a nova senha"
+          />
+        </div>
+
+        <Button
+          onClick={handleChangePassword}
+          disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+        >
+          {changingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <KeyRound className="mr-2 h-4 w-4" />
+          Atualizar senha
+        </Button>
+      </div>
     </div>
   );
 };
