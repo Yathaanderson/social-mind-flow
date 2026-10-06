@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2, Smartphone, Chrome } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,11 @@ const Auth: React.FC = () => {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const { toast } = useToast();
+  const location = useLocation();
+  const requestedPath = (location.state as { returnTo?: unknown } | null)?.returnTo;
+  const destination = typeof requestedPath === 'string' && requestedPath.startsWith('/') && !requestedPath.startsWith('//')
+    ? requestedPath
+    : '/dashboard';
 
   if (loading) {
     return (
@@ -27,7 +32,7 @@ const Auth: React.FC = () => {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={destination} replace />;
   }
 
   const handleSignIn = async (e: React.FormEvent) => {
