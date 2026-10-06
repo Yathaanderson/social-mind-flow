@@ -2,12 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Instagram, ExternalLink, Unplug } from 'lucide-react';
+import { CheckCircle2, Instagram, ShieldCheck, Unplug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   getSocialAccount,
-  createSocialAccount,
   updateSocialAccount,
 } from '@/integrations/firebase/firestore';
 
@@ -24,24 +23,11 @@ export const SocialAccountsTab: React.FC = () => {
   const { user } = useAuth();
   const [account, setAccount] = useState<SocialAccount | null>(null);
   const [loading, setLoading] = useState(true);
-  const [connecting, setConnecting] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-
-  const FACEBOOK_APP_ID = import.meta.env.VITE_FACEBOOK_APP_ID || '';
 
   useEffect(() => {
     if (user) {
       fetchAccount();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state');
-
-    if (code && state === 'instagram_connect' && user) {
-      handleOAuthCallback(code);
     }
   }, [user]);
 
@@ -66,47 +52,6 @@ export const SocialAccountsTab: React.FC = () => {
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleConnect = () => {
-    if (!FACEBOOK_APP_ID) {
-      toast({
-        title: 'Configuração pendente',
-        description: 'O App do Facebook ainda não foi configurado. Configure o VITE_FACEBOOK_APP_ID no .env',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setConnecting(true);
-
-    const redirectUri = `${window.location.origin}/settings`;
-    const scopes = 'instagram_basic,instagram_content_publish,pages_show_list';
-    const authUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=instagram_connect&response_type=code`;
-
-    window.location.href = authUrl;
-  };
-
-  const handleOAuthCallback = async (code: string) => {
-    setConnecting(true);
-
-    try {
-      // Nota: a edge function do Supabase foi removida na migração para Firebase.
-      // Para OAuth com Instagram, considere usar Firebase Cloud Functions
-      // ou um backend próprio para trocar o code pelo access_token.
-      // Por enquanto, exibimos erro.
-      throw new Error('OAuth callback precisa ser reimplementado com Firebase Cloud Functions ou backend próprio.');
-
-    } catch (error) {
-      toast({
-        title: 'Erro ao conectar',
-        description: error instanceof Error ? error.message : 'Não foi possível conectar o Instagram.',
-        variant: 'destructive',
-      });
-    } finally {
-      setConnecting(false);
-      window.history.replaceState({}, document.title, window.location.pathname);
     }
   };
 
@@ -139,33 +84,6 @@ export const SocialAccountsTab: React.FC = () => {
     }
   };
 
-  const createInstagramAccount = async () => {
-    if (!user) return;
-    setConnecting(true);
-    try {
-      const newId = await createSocialAccount({
-        user_id: user.uid,
-        platform: 'instagram',
-      });
-      setAccount({
-        id: newId,
-        platform: 'instagram',
-        username: null,
-        is_connected: false,
-        access_token: null,
-        ig_user_id: null,
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível criar a conta do Instagram.',
-        variant: 'destructive',
-      });
-    } finally {
-      setConnecting(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="space-y-4">
@@ -182,20 +100,11 @@ export const SocialAccountsTab: React.FC = () => {
           Instagram
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Conecte sua conta comercial do Instagram para publicar posts automaticamente.
+          Crie, revise, organize e agende seu conteúdo mesmo sem conectar uma conta.
         </p>
       </div>
 
-      {!account ? (
-        <div className="text-center py-8 glass-card rounded-xl">
-          <Instagram className="w-12 h-12 mx-auto mb-4 text-pink-500/50" />
-          <p className="text-muted-foreground mb-4">Nenhuma conta do Instagram cadastrada.</p>
-          <Button onClick={createInstagramAccount} disabled={connecting}>
-            <Instagram className="w-4 h-4 mr-2" />
-            Adicionar Instagram
-          </Button>
-        </div>
-      ) : account.is_connected ? (
+      {account?.is_connected ? (
         <div className="glass-card rounded-xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -205,9 +114,9 @@ export const SocialAccountsTab: React.FC = () => {
               <div>
                 <h4 className="font-semibold text-lg flex items-center gap-2">
                   {account.username ? `@${account.username}` : 'Instagram'}
-                  <Badge className="bg-green-500/20 text-green-400">Conectado</Badge>
+                   <Badge variant="secondary">Conta registrada</Badge>
                 </h4>
-                <p className="text-sm text-muted-foreground">Pronto para publicar</p>
+                 <p className="text-sm text-muted-foreground">A publicação automática ainda não está disponível.</p>
               </div>
             </div>
           </div>
@@ -233,40 +142,25 @@ export const SocialAccountsTab: React.FC = () => {
             <div>
               <h4 className="font-semibold flex items-center gap-2">
                 Instagram
-                <Badge variant="secondary">Desconectado</Badge>
+                 <Badge variant="secondary">Em preparação</Badge>
               </h4>
-              <p className="text-sm text-muted-foreground">Conecte para publicar posts</p>
+               <p className="text-sm text-muted-foreground">A conexão e a publicação automática serão habilitadas em uma etapa futura.</p>
             </div>
           </div>
 
-          <Button
-            onClick={handleConnect}
-            disabled={connecting || !FACEBOOK_APP_ID}
-            className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-90"
-          >
-            {connecting ? (
-              'Conectando...'
-            ) : (
-              <>
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Conectar Instagram
-              </>
-            )}
-          </Button>
-
-          {!FACEBOOK_APP_ID && (
-            <p className="text-xs text-muted-foreground text-center">
-              Configure VITE_FACEBOOK_APP_ID no arquivo .env para habilitar a conexão.
-            </p>
-          )}
-
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>Para conectar, você precisa:</p>
-            <ul className="list-disc list-inside space-y-0.5 ml-2">
-              <li>Uma conta comercial do Instagram</li>
-              <li>Um Facebook Page vinculado ao Instagram</li>
-              <li>Um App do Facebook com permissão de publicação</li>
+          <div className="space-y-3 text-sm text-muted-foreground">
+            <p className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />Sem conexão, você pode gerar peças, salvar rascunhos, editar conteúdos e organizar o calendário.</p>
+            <p className="flex items-start gap-2"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-warning" />Para conectar no futuro, será necessária uma conta profissional do Instagram vinculada a uma Página do Facebook.</p>
+            <div className="border-t border-border pt-3">
+              <p className="font-medium text-foreground">Permissões necessárias na etapa de conexão</p>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                <li>Ver a conta profissional e as Páginas vinculadas.</li>
+                <li>Criar e publicar conteúdo com sua autorização.</li>
+                <li>Manter a conexão protegida enquanto estiver ativa.</li>
             </ul>
+            </div>
+            <p className="border-t border-border pt-3">No momento, o sistema está em modo de preparação. Nenhum conteúdo será publicado automaticamente.</p>
+            <p><strong className="text-foreground">Próximo passo:</strong> concluir primeiro as melhorias de uso e segurança. Depois, a conexão será ativada e testada com você.</p>
           </div>
         </div>
       )}
