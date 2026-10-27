@@ -1,5 +1,11 @@
 # User administration and private AI keys
 
+## Google sign-in
+- [x] Verify Firebase Google provider and hosted authorized domains.
+- [ ] Improve sign-in error feedback and restore controls after popup completion.
+- [ ] Add published and preview app domains to Firebase authorized domains (requires owner configuration).
+- [ ] Verify Google account sign-in end to end with an authorized domain and the user's Google session.
+
 - [x] Confirm owner account (yatha@socialmindflow.app) and permission to use Lovable Cloud for trusted Firebase administration.
 - [ ] Configure the Firebase administrative credential securely.
 - [ ] Implement private user listing and block/unblock with server-enforced access control.
