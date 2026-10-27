@@ -2,9 +2,11 @@
 
 ## Google sign-in
 - [x] Verify Firebase Google provider and hosted authorized domains.
-- [ ] Improve sign-in error feedback and restore controls after popup completion.
+- [x] Improve sign-in error feedback and restore controls after popup completion (two policy tests passed; mobile popup opens Google and cancellation restores the button).
 - [ ] Add published and preview app domains to Firebase authorized domains (requires owner configuration).
 - [ ] Verify Google account sign-in end to end with an authorized domain and the user's Google session.
+
+Google blocker: Firebase public configuration lists only localhost and the Firebase hosting domains. The published and preview Lovable domains are missing; published Google attempt fails. No administrative credential is configured to change these settings. Owner must add social-mind-flow.lovable.app and id-preview--3b6f6d71-651d-45a1-a258-5667ab7133b9.lovable.app in Firebase Authentication → Settings → Authorized domains. Successful Google sign-in remains unverified without the user's Google session.
 
 - [x] Confirm owner account (yatha@socialmindflow.app) and permission to use Lovable Cloud for trusted Firebase administration.
 - [ ] Configure the Firebase administrative credential securely.
