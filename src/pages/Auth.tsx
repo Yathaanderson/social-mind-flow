@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { googleAuthErrorMessage } from '@/lib/google-auth';
 
 const Auth: React.FC = () => {
   const { user, signIn, signUp, signInWithGoogle, resetPassword, loading } = useAuth();
@@ -62,11 +63,16 @@ const Auth: React.FC = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isGoogleLoading || isSubmitting) return;
     setIsGoogleLoading(true);
     try {
       await signInWithGoogle();
     } catch (error) {
-      toast({ title: 'Erro no login com Google', description: 'Tente novamente.', variant: 'destructive' });
+      const description = googleAuthErrorMessage(error);
+      if (description) {
+        toast({ title: 'Acesso com Google', description, variant: 'destructive' });
+      }
+    } finally {
       setIsGoogleLoading(false);
     }
   };
@@ -171,7 +177,7 @@ const Auth: React.FC = () => {
                   variant="outline" 
                   className="w-full" 
                   onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading}
+                  disabled={isGoogleLoading || isSubmitting}
                 >
                   {isGoogleLoading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -216,7 +222,7 @@ const Auth: React.FC = () => {
                   variant="outline" 
                   className="w-full" 
                   onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading}
+                  disabled={isGoogleLoading || isSubmitting}
                 >
                   {isGoogleLoading ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
